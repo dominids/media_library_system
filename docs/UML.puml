@@ -1,0 +1,141 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam roundcorner 10
+skinparam shadowing true
+
+abstract class Media {
+    # id : int
+    # title : string
+    # releaseYear : int
+    # isAvailable : bool
+    # borrowedByUserId : int
+    + Media()
+    + Media(id: int, title: string, releaseYear: int)
+    + virtual ~Media() = default
+    + getId() : int
+    + getTitle() : string
+    + getReleaseYear() : int
+    + getIsAvailable() : bool
+    + getBorrowedByUserId() : int
+    + setTitle(newTitle: string) : void
+    + setReleaseYear(year: int) : void
+    + setAvailable(status: bool) : void
+    + setBorrowedByUserId(userId: int) : void
+    + virtual printDetails(os: ostream&) : void
+    + {abstract} virtual calculateLateFee(daysOverdue: int) : double
+    + {abstract} virtual getType() : string
+    + operator==(other: const Media&) : bool
+    + friend operator<<(os: ostream&, media: const Media&) : ostream&
+}
+
+class Book {
+    - author : string
+    - pageCount : int
+    - isbn : string
+    + Book(id: int, title: string, releaseYear: int, author: string, pageCount: int, isbn: string)
+    + getAuthor() : string
+    + getPageCount() : int
+    + getIsbn() : string
+    + setAuthor(newAuthor: string) : void
+    + setPageCount(pages: int) : void
+    + setIsbn(newIsbn: string) : void
+    + printDetails(os: ostream&) : void <<override>>
+    + calculateLateFee(daysOverdue: int) : double <<override>>
+    + getType() : string <<override>>
+}
+
+class Movie {
+    - director : string
+    - durationMinutes : int
+    - ageRating : int
+    + Movie(id: int, title: string, releaseYear: int, director: string, durationMinutes: int, ageRating: int)
+    + getDirector() : string
+    + getDurationMinutes() : int
+    + getAgeRating() : int
+    + setDirector(newDirector: string) : void
+    + setDurationMinutes(duration: int) : void
+    + setAgeRating(rating: int) : void
+    + printDetails(os: ostream&) : void <<override>>
+    + calculateLateFee(daysOverdue: int) : double <<override>>
+    + getType() : string <<override>>
+}
+
+class User {
+    - userId : int
+    - fullName : string
+    - age : int
+    + User()
+    + User(userId: int, fullName: string, age: int)
+    + getUserId() : int
+    + getFullName() : string
+    + getAge() : int
+    + setFullName(name: string) : void
+    + setAge(newAge: int) : void
+    + friend operator<<(os: ostream&, user: const User&) : ostream&
+}
+
+class LibraryException {
+    + LibraryException(message: string)
+}
+
+class MediaNotFoundException {
+    + MediaNotFoundException(message: string)
+}
+
+class MediaUnavailableException {
+    + MediaUnavailableException(message: string)
+}
+
+class AgeRestrictionException {
+    + AgeRestrictionException(message: string)
+}
+
+class UserNotFoundException {
+    + UserNotFoundException(message: string)
+}
+
+class LibraryManager {
+    - catalog : vector<unique_ptr<Media>>
+    - users : vector<User>
+    - nextMediaId : int
+    - nextUserId : int
+    + LibraryManager()
+    + addBook(title: string, year: int, author: string, pages: int, isbn: string) : int
+    + addMovie(title: string, year: int, director: string, duration: int, ageRating: int) : int
+    + addUser(fullName: string, age: int) : int
+    + removeMedia(id: int) : void
+    + findMediaById(id: int) : Media*
+    + findMediaById(id: int) : const Media* const
+    + findUserById(userId: int) : User*
+    + findUserById(userId: int) : const User* const
+    + updateMediaTitle(id: int, newTitle: string) : void
+    + displayAllMedia() : void const
+    + displayAllUsers() : void const
+    + borrowMedia(mediaId: int, userId: int) : void
+    + returnMedia(mediaId: int, daysOverdue: int) : double
+    + seedData() : void
+    + getCatalog() : const vector<unique_ptr<Media>>& const
+    + getUsers() : const vector<User>& const
+}
+
+' Dziedziczenie
+Media <|-- Book : dziedziczy
+Media <|-- Movie : dziedziczy
+
+' Hierarchia wyjatkow
+std::runtime_error <|-- LibraryException
+LibraryException <|-- MediaNotFoundException
+LibraryException <|-- MediaUnavailableException
+LibraryException <|-- AgeRestrictionException
+LibraryException <|-- UserNotFoundException
+
+' Kompozycja i agregacja
+LibraryManager *-- "0..*" Media : zarzadza cyklem zycia (unique_ptr)
+LibraryManager o-- "0..*" User : agreguje uzytkownikow
+
+' Zaleznosci
+LibraryManager ..> LibraryException : rzuca wyjatki
+LibraryManager ..> Movie : dynamic_cast (walidacja wieku)
+
+@enduml
