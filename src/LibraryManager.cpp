@@ -88,8 +88,7 @@ void LibraryManager::displayAllMedia() const {
     }
     cout << "\n--- KATALOG MEDIOW (" << catalog.size() << ") ---\n";
     for (const auto& item : catalog) {
-        item->printDetails(cout);
-        cout << "\n";
+        cout << *item << "\n";
     }
 }
 

@@ -50,3 +50,12 @@ void Media::printDetails(ostream& os) const {
        << " | Rok: " << releaseYear
        << " | Dostępność: " << (isAvailable ? "Dostępny" : "Wypożyczony (ID użytkownika: " + to_string(borrowedByUserId) + ")");
 }
+
+bool Media::operator==(const Media& other) const {
+    return this->id == other.id;
+}
+
+ostream& operator<<(ostream& os, const Media& media) {
+    media.printDetails(os);
+    return os;
+}

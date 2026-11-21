@@ -33,6 +33,9 @@ public:
     virtual void printDetails(ostream& os = cout) const;
     virtual double calculateLateFee(int daysOverdue) const = 0;
     virtual string getType() const = 0;
+
+    bool operator==(const Media& other) const;
+    friend ostream& operator<<(ostream& os, const Media& media);
 };
 
 #endif // MEDIA_HPP
