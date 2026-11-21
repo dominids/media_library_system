@@ -141,6 +141,13 @@ int promptUserId(const LibraryManager& library, const string& prompt = "Podaj ID
     return readInt(prompt, 1);
 }
 
+int promptMediaId(const LibraryManager& library, const string& prompt = "Podaj ID pozycji: ") {
+    if (askYesNo("Czy chcesz wyswietlic katalog mediow?")) {
+        library.displayAllMedia();
+    }
+    return readInt(prompt, 1);
+}
+
 void printMenu() {
     cout << "\n========================================\n";
     cout << "  SYSTEM ZARZADZANIA WYPOZYCZALNIA MEDIOW\n";
@@ -210,7 +217,7 @@ int main() {
                 }
                 case 4: {
                     cout << "\n--- EDYCJA TYTULU ZASOBU ---\n";
-                    int id = readInt("Podaj ID pozycji do modyfikacji: ", 1);
+                    int id = promptMediaId(library, "Podaj ID pozycji do modyfikacji: ");
                     string newTitle = readLine("Podaj nowy tytul: ");
                     library.updateMediaTitle(id, newTitle);
                     cout << "[SUKCES] Zaktualizowano tytul dla pozycji ID " << id << ".\n";
@@ -218,7 +225,7 @@ int main() {
                 }
                 case 5: {
                     cout << "\n--- USUWANIE ZASOBU Z KATALOGU ---\n";
-                    int id = readInt("Podaj ID pozycji do usuniecia: ", 1);
+                    int id = promptMediaId(library, "Podaj ID pozycji do usuniecia: ");
                     library.removeMedia(id);
                     cout << "[SUKCES] Pozycja o ID " << id << " zostala usunieta.\n";
                     break;
@@ -240,7 +247,7 @@ int main() {
                 }
                 case 7: {
                     cout << "\n--- WYPOZYCZENIE FIZYCZNE ---\n";
-                    int mediaId = readInt("Podaj ID wypozyczanej pozycji: ", 1);
+                    int mediaId = promptMediaId(library, "Podaj ID wypozyczanej pozycji: ");
                     int userId = promptUserId(library);
                     library.borrowMedia(mediaId, userId);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie wypozyczona uzytkownikowi ID " << userId << ".\n";
@@ -248,7 +255,7 @@ int main() {
                 }
                 case 8: {
                     cout << "\n--- ZWROT POZYCJI FIZYCZNEJ ---\n";
-                    int mediaId = readInt("Podaj ID zwracanej pozycji: ", 1);
+                    int mediaId = promptMediaId(library, "Podaj ID zwracanej pozycji: ");
                     int daysOverdue = readInt("Liczba dni spoznienia (0 jesli zwrot w terminie): ", 0);
                     double fee = library.returnMedia(mediaId, daysOverdue);
                     cout << fixed << setprecision(2);
@@ -262,7 +269,7 @@ int main() {
                 }
                 case 9: {
                     cout << "\n--- WYPOZYCZENIE FILMU ONLINE (CYFROWE VOD NA 48H) ---\n";
-                    int movieId = readInt("Podaj ID filmu do wypozyczenia online: ", 1);
+                    int movieId = promptMediaId(library, "Podaj ID filmu do wypozyczenia online: ");
                     int userId = promptUserId(library);
 
                     double price = library.rentMovieOnline(movieId, userId);
