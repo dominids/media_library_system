@@ -5,27 +5,48 @@
 
 using namespace std;
 
-User::User() : userId(0), fullName(""), age(0) {}
+// --- Hash djb2 (prosta implementacja akademicka) ---
+static string hashPassword(const string& pwd) {
+    unsigned long hash = 5381;
+    for (unsigned char c : pwd) {
+        hash = ((hash << 5) + hash) + c; // hash * 33 + c
+    }
+    return to_string(hash);
+}
+
+// Konstruktory
+User::User() : userId(0), fullName(""), age(0), username(""), passwordHash("") {}
 
 User::User(int userId, const string& fullName, int age)
-    : userId(userId), fullName(fullName), age(age) {
+    : userId(userId), fullName(fullName), age(age), username(""), passwordHash("") {
     if (age <= 0) {
         throw InvalidDataException("Wiek uzytkownika musi byc wiekszy od zera (podano: " + to_string(age) + ").");
     }
 }
 
-int User::getUserId() const {
-    return userId;
+User::User(int userId, const string& fullName, int age,
+           const string& username, const string& rawPassword)
+    : userId(userId), fullName(fullName), age(age),
+      username(username), passwordHash(hashPassword(rawPassword)) {
+    if (age <= 0) {
+        throw InvalidDataException("Wiek uzytkownika musi byc wiekszy od zera (podano: " + to_string(age) + ").");
+    }
+    if (username.empty()) {
+        throw InvalidDataException("Login uzytkownika nie moze byc pusty.");
+    }
+    if (rawPassword.empty()) {
+        throw InvalidDataException("Haslo uzytkownika nie moze byc puste.");
+    }
 }
 
-string User::getFullName() const {
-    return fullName;
-}
+// Gettery
+int User::getUserId() const { return userId; }
+string User::getFullName() const { return fullName; }
+int User::getAge() const { return age; }
+string User::getUsername() const { return username; }
+string User::getPasswordHash() const { return passwordHash; }
 
-int User::getAge() const {
-    return age;
-}
-
+// Settery
 void User::setFullName(const string& name) {
     if (name.empty()) {
         throw InvalidDataException("Imie i nazwisko uzytkownika nie moga byc puste.");
@@ -40,11 +61,42 @@ void User::setAge(int newAge) {
     age = newAge;
 }
 
+void User::setUsername(const string& uname) {
+    if (uname.empty()) {
+        throw InvalidDataException("Login uzytkownika nie moze byc pusty.");
+    }
+    username = uname;
+}
+
+void User::setPasswordHash(const string& hash) {
+    passwordHash = hash;
+}
+
+void User::setPassword(const string& rawPassword) {
+    if (rawPassword.empty()) {
+        throw InvalidDataException("Haslo uzytkownika nie moze byc puste.");
+    }
+    passwordHash = hashPassword(rawPassword);
+}
+
+bool User::checkPassword(const string& rawPassword) const {
+    return passwordHash == hashPassword(rawPassword);
+}
+
+bool User::hasLogin() const {
+    return !username.empty() && !passwordHash.empty();
+}
+
+// Wynajem cyfrowy
 void User::addDigitalRental(const DigitalRental& rental) {
     digitalRentals.push_back(rental);
 }
 
 const vector<DigitalRental>& User::getDigitalRentals() const {
+    return digitalRentals;
+}
+
+vector<DigitalRental>& User::getDigitalRentals() {
     return digitalRentals;
 }
 
@@ -82,9 +134,12 @@ void User::displayDigitalRentals(ostream& os, chrono::system_clock::time_point c
 }
 
 ostream& operator<<(ostream& os, const User& user) {
-    os << "[Użytkownik] ID: " << user.userId
-       << " | Imię i nazwisko: " << user.fullName
-       << " | Wiek: " << user.age << " lat"
-       << " | Aktywne subskrypcje VOD: " << user.digitalRentals.size();
+    os << "[Uzytkownik] ID: " << user.userId
+       << " | Imie i nazwisko: " << user.fullName
+       << " | Wiek: " << user.age << " lat";
+    if (!user.username.empty()) {
+        os << " | Login: " << user.username;
+    }
+    os << " | Aktywne subskrypcje VOD: " << user.digitalRentals.size();
     return os;
 }

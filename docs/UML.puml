@@ -26,6 +26,8 @@ abstract class Media {
     + setBorrowedByUserId(userId: int) : void
     + setBorrowInfo(userId: int, currentTime: time_point, loanDays: int) : void
     + resetBorrowInfo() : void
+    + setRawBorrowState(available: bool, borrowedBy: int, bTime: time_point, dTime: time_point) : void
+    + extendDueDate(days: int) : void
     + getBorrowTime() : time_point
     + getDueTime() : time_point
     + calculateOverdueDays(currentTime: time_point) : int
@@ -94,20 +96,35 @@ class User {
     - userId : int
     - fullName : string
     - age : int
+    - username : string
+    - passwordHash : string
     - digitalRentals : vector<DigitalRental>
     + User()
     + User(userId: int, fullName: string, age: int)
+    + User(userId: int, fullName: string, age: int, username: string, rawPassword: string)
     + getUserId() : int
     + getFullName() : string
     + getAge() : int
+    + getUsername() : string
+    + getPasswordHash() : string
     + setFullName(name: string) : void
     + setAge(newAge: int) : void
+    + setUsername(uname: string) : void
+    + setPasswordHash(hash: string) : void
+    + setPassword(rawPassword: string) : void
+    + checkPassword(rawPassword: string) : bool
+    + hasLogin() : bool
     + addDigitalRental(rental: const DigitalRental&) : void
     + getDigitalRentals() : const vector<DigitalRental>&
     + hasActiveDigitalRental(movieId: int, currentTime: time_point) : bool
     + cleanupExpiredRentals(currentTime: time_point) : int
     + displayDigitalRentals(os: ostream&, currentTime: time_point) : void
     + friend operator<<(os: ostream&, user: const User&) : ostream&
+}
+
+class LibrarySerializer {
+    + {static} saveToFile(path: string, mgr: const LibraryManager&) : void
+    + {static} loadFromFile(path: string, mgr: LibraryManager&) : void
 }
 
 class LibraryException {
@@ -144,6 +161,9 @@ class LibraryManager {
     + addBook(title: string, year: int, author: string, pages: int, isbn: string) : int
     + addMovie(title: string, year: int, director: string, duration: int, ageRating: int, digitalPrice: double) : int
     + addUser(fullName: string, age: int) : int
+    + addUserWithLogin(fullName: string, age: int, username: string, rawPassword: string) : int
+    + findUserByLogin(username: string) : User*
+    + loginExists(username: string) : bool
     + removeMedia(id: int) : void
     + findMediaById(id: int) : Media*
     + findMediaById(id: int) : const Media* const
@@ -154,6 +174,7 @@ class LibraryManager {
     + displayAllUsers() : void const
     + borrowMedia(mediaId: int, userId: int) : void
     + returnMedia(mediaId: int) : ReturnInfo
+    + extendLoan(mediaId: int, userId: int) : void
     + rentMovieOnline(movieId: int, userId: int) : double
     + cleanupAllExpiredDigitalRentals() : int
     + displayUserDigitalRentals(userId: int) : void const
@@ -163,6 +184,15 @@ class LibraryManager {
     + seedData() : void
     + getCatalog() : const vector<unique_ptr<Media>>& const
     + getUsers() : const vector<User>& const
+    + getNextMediaId() : int
+    + getNextUserId() : int
+    + setNextMediaId(id: int) : void
+    + setNextUserId(id: int) : void
+    + clearAll() : void
+    + loadBook(...) : void
+    + loadMovie(...) : void
+    + loadUser(...) : void
+    + loadDigitalRental(...) : void
 }
 
 ' Dziedziczenie
@@ -181,6 +211,7 @@ LibraryException <|-- InvalidDataException
 LibraryManager *-- "0..*" Media : zarzadza cyklem zycia (unique_ptr)
 LibraryManager o-- "0..*" User : agreguje uzytkownikow
 User *-- "0..*" DigitalRental : posiada subskrypcje cyfrowe 48h
+LibrarySerializer ..> LibraryManager : odczytuje i zapisuje stan
 
 ' Zaleznosci
 LibraryManager ..> LibraryException : rzuca wyjatki

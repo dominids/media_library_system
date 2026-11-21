@@ -36,6 +36,8 @@ public:
 
     void setBorrowInfo(int userId, chrono::system_clock::time_point currentTime, int loanDays = 14);
     void resetBorrowInfo();
+    void setRawBorrowState(bool available, int borrowedBy, chrono::system_clock::time_point bTime, chrono::system_clock::time_point dTime);
+    void extendDueDate(int days);
 
     chrono::system_clock::time_point getBorrowTime() const;
     chrono::system_clock::time_point getDueTime() const;

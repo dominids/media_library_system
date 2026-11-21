@@ -5,14 +5,43 @@
 #endif
 
 #include "LibraryManager.hpp"
+#include "LibrarySerializer.hpp"
 #include "Exceptions.hpp"
 
 #include <iostream>
 #include <string>
 #include <limits>
 #include <iomanip>
+#include <filesystem>
 
 using namespace std;
+
+static string getDataFilePath() {
+    if (filesystem::exists("data/library.dat") || filesystem::exists("data")) {
+        return "data/library.dat";
+    }
+    if (filesystem::exists("../data/library.dat") || filesystem::exists("../data")) {
+        return "../data/library.dat";
+    }
+    return "data/library.dat";
+}
+
+static void syncLoad(LibraryManager& library) {
+    string path = getDataFilePath();
+    if (filesystem::exists(path)) {
+        LibrarySerializer::loadFromFile(path, library);
+    } else {
+        filesystem::create_directories(filesystem::path(path).parent_path());
+        library.seedData();
+        LibrarySerializer::saveToFile(path, library);
+    }
+}
+
+static void syncSave(const LibraryManager& library) {
+    string path = getDataFilePath();
+    filesystem::create_directories(filesystem::path(path).parent_path());
+    LibrarySerializer::saveToFile(path, library);
+}
 
 string trim(const string& str) {
     size_t first = str.find_first_not_of(" \t\r\n");
@@ -174,13 +203,14 @@ int main() {
 #endif
 
     LibraryManager library;
-    cout << "[INFO] Inicjalizacja biblioteki danymi demonstracyjnymi (seedData)... ";
-    library.seedData();
+    cout << "[INFO] Ladowanie stanu biblioteki z bazy danych... ";
+    syncLoad(library);
     cout << "Gotowe!\n";
 
     bool running = true;
 
     while (running) {
+        syncLoad(library);
         printMenu();
         int choice = readInt("Wybierz opcje (1-12): ", 1, 12);
 
@@ -199,6 +229,7 @@ int main() {
                     string isbn = readLine("Numer ISBN: ");
 
                     int id = library.addBook(title, year, author, pages, isbn);
+                    syncSave(library);
                     cout << "[SUKCES] Pomyslnie dodano ksiazke z ID: " << id << "\n";
                     break;
                 }
@@ -212,6 +243,7 @@ int main() {
                     double digitalPrice = readDouble("Oplata za wypozyczenie cyfrowe VOD w PLN (np. 14.99): ", 0.01);
 
                     int id = library.addMovie(title, year, director, duration, ageRating, digitalPrice);
+                    syncSave(library);
                     cout << "[SUKCES] Pomyslnie dodano film z ID: " << id << "\n";
                     break;
                 }
@@ -220,6 +252,7 @@ int main() {
                     int id = promptMediaId(library, "Podaj ID pozycji do modyfikacji: ");
                     string newTitle = readLine("Podaj nowy tytul: ");
                     library.updateMediaTitle(id, newTitle);
+                    syncSave(library);
                     cout << "[SUKCES] Zaktualizowano tytul dla pozycji ID " << id << ".\n";
                     break;
                 }
@@ -227,6 +260,7 @@ int main() {
                     cout << "\n--- USUWANIE ZASOBU Z KATALOGU ---\n";
                     int id = promptMediaId(library, "Podaj ID pozycji do usuniecia: ");
                     library.removeMedia(id);
+                    syncSave(library);
                     cout << "[SUKCES] Pozycja o ID " << id << " zostala usunieta.\n";
                     break;
                 }
@@ -240,8 +274,17 @@ int main() {
                     } else if (subChoice == 2) {
                         string name = readLine("Imie i nazwisko: ");
                         int age = readInt("Wiek (1-120): ", 1, 120);
-                        int uid = library.addUser(name, age);
-                        cout << "[SUKCES] Zarejestrowano uzytkownika \"" << name << "\" z ID: " << uid << "\n";
+                        if (askYesNo("Czy chcesz utworzyc dane logowania do panelu uzytkownika?")) {
+                            string uname = readLine("Podaj login: ");
+                            string pass = readLine("Podaj haslo: ");
+                            int uid = library.addUserWithLogin(name, age, uname, pass);
+                            syncSave(library);
+                            cout << "[SUKCES] Zarejestrowano uzytkownika \"" << name << "\" z loginem \"" << uname << "\" i ID: " << uid << "\n";
+                        } else {
+                            int uid = library.addUser(name, age);
+                            syncSave(library);
+                            cout << "[SUKCES] Zarejestrowano uzytkownika \"" << name << "\" z ID: " << uid << "\n";
+                        }
                     }
                     break;
                 }
@@ -250,6 +293,7 @@ int main() {
                     int mediaId = promptMediaId(library, "Podaj ID wypozyczanej pozycji: ");
                     int userId = promptUserId(library);
                     library.borrowMedia(mediaId, userId);
+                    syncSave(library);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie wypozyczona uzytkownikowi ID " << userId << ".\n";
                     break;
                 }
@@ -257,6 +301,7 @@ int main() {
                     cout << "\n--- ZWROT POZYCJI FIZYCZNEJ ---\n";
                     int mediaId = promptMediaId(library, "Podaj ID zwracanej pozycji: ");
                     ReturnInfo info = library.returnMedia(mediaId);
+                    syncSave(library);
                     cout << fixed << setprecision(2);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie zwrocona do biblioteki.\n";
                     cout << "[TERMIN] Wyznaczony termin zwrotu wynosil: " << info.dueDate << "\n";
@@ -274,6 +319,7 @@ int main() {
                     int userId = promptUserId(library);
 
                     double price = library.rentMovieOnline(movieId, userId);
+                    syncSave(library);
                     cout << fixed << setprecision(2);
                     cout << "[SUKCES] Film ID " << movieId << " zostal wypozyczony online dla uzytkownika ID " << userId << "!\n";
                     cout << "[VOD] Pobrano oplate dystrybucyjna: " << price << " PLN.\n";
@@ -283,6 +329,8 @@ int main() {
                 case 10: {
                     cout << "\n--- PRZEGLADANIE SUBSKRYPCJI ONLINE UZYTKOWNIKA ---\n";
                     int userId = promptUserId(library);
+                    library.cleanupAllExpiredDigitalRentals();
+                    syncSave(library);
                     library.displayUserDigitalRentals(userId);
                     break;
                 }
@@ -291,6 +339,7 @@ int main() {
                     cout << "Aktualne przesuniecie czasu: +" << library.getSimulatedHoursOffset() << "h\n";
                     int hours = readInt("O ile godzin chcesz przesunac zegar symulacji? (np. 48 lub 49): ", 1);
                     library.advanceSimulatedTime(hours);
+                    syncSave(library);
                     break;
                 }
                 case 12: {

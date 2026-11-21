@@ -58,6 +58,46 @@ int LibraryManager::addUser(const string& fullName, int age) {
     return id;
 }
 
+int LibraryManager::addUserWithLogin(const string& fullName, int age, const string& username, const string& rawPassword) {
+    if (age <= 0) {
+        throw InvalidDataException("Wiek uzytkownika musi byc wiekszy od zera (podano: " + to_string(age) + ").");
+    }
+    if (fullName.empty()) {
+        throw InvalidDataException("Imie i nazwisko uzytkownika nie moga byc puste.");
+    }
+    if (username.empty()) {
+        throw InvalidDataException("Login uzytkownika nie moze byc pusty.");
+    }
+    if (rawPassword.empty()) {
+        throw InvalidDataException("Haslo uzytkownika nie moze byc puste.");
+    }
+    if (loginExists(username)) {
+        throw InvalidDataException("Uzytkownik o podanym loginie (\"" + username + "\") juz istnieje.");
+    }
+
+    int id = nextUserId++;
+    users.push_back(User(id, fullName, age, username, rawPassword));
+    return id;
+}
+
+User* LibraryManager::findUserByLogin(const string& username) {
+    for (auto& u : users) {
+        if (u.getUsername() == username) {
+            return &u;
+        }
+    }
+    return nullptr;
+}
+
+bool LibraryManager::loginExists(const string& username) const {
+    for (const auto& u : users) {
+        if (u.getUsername() == username) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void LibraryManager::removeMedia(int id) {
     auto it = find_if(catalog.begin(), catalog.end(), [id](const unique_ptr<Media>& item) {
         return item->getId() == id;
@@ -186,6 +226,28 @@ ReturnInfo LibraryManager::returnMedia(int mediaId) {
     return {fee, daysOverdue, dueDate};
 }
 
+void LibraryManager::extendLoan(int mediaId, int userId) {
+    Media* media = findMediaById(mediaId);
+    if (!media) {
+        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(mediaId));
+    }
+
+    User* user = findUserById(userId);
+    if (!user) {
+        throw UserNotFoundException("Nie znaleziono uzytkownika o ID: " + to_string(userId));
+    }
+
+    if (media->getIsAvailable()) {
+        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") nie jest wypozyczona!");
+    }
+
+    if (media->getBorrowedByUserId() != userId) {
+        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") nie jest wypozyczona przez Ciebie!");
+    }
+
+    media->extendDueDate(7);
+}
+
 double LibraryManager::rentMovieOnline(int movieId, int userId) {
     // Przed nowym wypozyczeniem czyscimy wygasle subskrypcje
     cleanupAllExpiredDigitalRentals();
@@ -271,9 +333,9 @@ void LibraryManager::seedData() {
     addMovie("Ojciec Chrzestny", 1972, "Francis Ford Coppola", 175, 16, 12.99);
     addMovie("Pulp Fiction", 1994, "Quentin Tarantino", 154, 18, 17.99);
 
-    addUser("Jan Kowalski", 25);
-    addUser("Anna Nowak", 15);
-    addUser("Piotr Wisniewski", 10);
+    addUserWithLogin("Jan Kowalski", 25, "jan", "haslo123");
+    addUserWithLogin("Anna Nowak", 15, "anna", "haslo123");
+    addUserWithLogin("Piotr Wisniewski", 10, "piotr", "haslo123");
 }
 
 const vector<unique_ptr<Media>>& LibraryManager::getCatalog() const {
@@ -282,4 +344,73 @@ const vector<unique_ptr<Media>>& LibraryManager::getCatalog() const {
 
 const vector<User>& LibraryManager::getUsers() const {
     return users;
+}
+
+vector<User>& LibraryManager::getUsers() {
+    return users;
+}
+
+int LibraryManager::getNextMediaId() const {
+    return nextMediaId;
+}
+
+int LibraryManager::getNextUserId() const {
+    return nextUserId;
+}
+
+void LibraryManager::setNextMediaId(int id) {
+    nextMediaId = id;
+}
+
+void LibraryManager::setNextUserId(int id) {
+    nextUserId = id;
+}
+
+void LibraryManager::clearAll() {
+    catalog.clear();
+    users.clear();
+    nextMediaId = 1;
+    nextUserId = 1;
+}
+
+void LibraryManager::loadBook(int id, const string& title, int year,
+                              const string& author, int pageCount, const string& isbn,
+                              bool available, int borrowedBy,
+                              chrono::system_clock::time_point borrowTime,
+                              chrono::system_clock::time_point dueTime) {
+    auto book = make_unique<Book>(id, title, year, author, pageCount, isbn);
+    book->setRawBorrowState(available, borrowedBy, borrowTime, dueTime);
+    catalog.push_back(move(book));
+}
+
+void LibraryManager::loadMovie(int id, const string& title, int year,
+                               const string& director, int durationMinutes, int ageRating,
+                               double digitalPrice, bool available, int borrowedBy,
+                               chrono::system_clock::time_point borrowTime,
+                               chrono::system_clock::time_point dueTime) {
+    auto movie = make_unique<Movie>(id, title, year, director, durationMinutes, ageRating, digitalPrice);
+    movie->setRawBorrowState(available, borrowedBy, borrowTime, dueTime);
+    catalog.push_back(move(movie));
+}
+
+void LibraryManager::loadUser(int id, const string& fullName, int age,
+                              const string& username, const string& passwordHash) {
+    User u(id, fullName, age);
+    u.setUsername(username);
+    u.setPasswordHash(passwordHash);
+    users.push_back(u);
+}
+
+void LibraryManager::loadDigitalRental(int userId, int movieId, const string& movieTitle,
+                                       double feePaid,
+                                       chrono::system_clock::time_point rentalTime,
+                                       chrono::system_clock::time_point expirationTime) {
+    User* u = findUserById(userId);
+    if (!u) return;
+
+    // Oblicz pozostaly czas lub bezposrednio skonstruuj
+    int hours = static_cast<int>(chrono::duration_cast<chrono::hours>(expirationTime - rentalTime).count());
+    if (hours <= 0) hours = 48;
+    DigitalRental rental(movieId, movieTitle, feePaid, hours, rentalTime);
+    u->addDigitalRental(rental);
 }

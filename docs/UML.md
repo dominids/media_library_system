@@ -1,6 +1,6 @@
 # Diagram Klas UML i Relacje w Projekcie
 
-Poniższy diagram przedstawia architekturę obiektową Systemu Zarządzania Wypożyczalnią Mediów wzbogaconą o moduł **dystrybucji cyfrowej filmów online (VOD 48h)**.
+Poniższy diagram przedstawia architekturę obiektową Systemu Zarządzania Wypożyczalnią Mediów wzbogaconą o moduł **dystrybucji cyfrowej filmów online (VOD 48h)**, **uwierzytelnianie użytkowników z hashowaniem haseł**, **dwustronną synchronizację bazy w pliku (`LibrarySerializer`)** oraz **obsługę dwóch terminali**.
 
 ```mermaid
 classDiagram
@@ -29,6 +29,8 @@ classDiagram
         +void setBorrowedByUserId(int userId)
         +void setBorrowInfo(int userId, time_point currentTime, int loanDays)
         +void resetBorrowInfo()
+        +void setRawBorrowState(bool avail, int borrowBy, time_point bTime, time_point dTime)
+        +void extendDueDate(int days)
         +time_point getBorrowTime() const
         +time_point getDueTime() const
         +int calculateOverdueDays(time_point currentTime) const
@@ -44,16 +46,16 @@ classDiagram
         -string author
         -int pageCount
         -string isbn
-        +Book(int id, string title, int year, string author, int pageCount, string isbn)
+        +Book(int id, string title, int year, string author, int pages, string isbn)
         +string getAuthor() const
         +int getPageCount() const
         +string getIsbn() const
         +void setAuthor(string newAuthor)
         +void setPageCount(int pages)
         +void setIsbn(string newIsbn)
-        +void printDetails(ostream& os) const override
-        +double calculateLateFee(int daysOverdue) const override
-        +string getType() const override
+        +void printDetails(ostream& os) const
+        +double calculateLateFee(int daysOverdue) const
+        +string getType() const
     }
 
     class Movie {
@@ -61,7 +63,7 @@ classDiagram
         -int durationMinutes
         -int ageRating
         -double digitalPrice
-        +Movie(int id, string title, int year, string director, int durationMinutes, int ageRating, double digitalPrice)
+        +Movie(int id, string title, int year, string director, int dur, int rating, double price)
         +string getDirector() const
         +int getDurationMinutes() const
         +int getAgeRating() const
@@ -70,9 +72,9 @@ classDiagram
         +void setDurationMinutes(int duration)
         +void setAgeRating(int rating)
         +void setDigitalPrice(double price)
-        +void printDetails(ostream& os) const override
-        +double calculateLateFee(int daysOverdue) const override
-        +string getType() const override
+        +void printDetails(ostream& os) const
+        +double calculateLateFee(int daysOverdue) const
+        +string getType() const
     }
 
     class DigitalRental {
@@ -82,7 +84,7 @@ classDiagram
         -time_point expirationTime
         -double feePaid
         +DigitalRental()
-        +DigitalRental(int movieId, string title, double fee, int durationHours, time_point startTime)
+        +DigitalRental(int id, string title, double fee, int durationHours, time_point startTime)
         +int getMovieId() const
         +string getMovieTitle() const
         +time_point getRentalTime() const
@@ -97,39 +99,33 @@ classDiagram
         -int userId
         -string fullName
         -int age
+        -string username
+        -string passwordHash
         -vector~DigitalRental~ digitalRentals
         +User()
-        +User(int userId, string fullName, int age)
+        +User(int id, string name, int age)
+        +User(int id, string name, int age, string username, string rawPassword)
         +int getUserId() const
         +string getFullName() const
         +int getAge() const
+        +string getUsername() const
+        +string getPasswordHash() const
         +void setFullName(string name)
-        +void setAge(int newAge)
-        +void addDigitalRental(DigitalRental rental)
-        +const vector~DigitalRental~& getDigitalRentals() const
+        +void setAge(int age)
+        +void setUsername(string uname)
+        +void setPassword(string rawPassword)
+        +bool checkPassword(string rawPassword) const
+        +bool hasLogin() const
+        +void addDigitalRental(const DigitalRental& rental)
+        +vector~DigitalRental~ getDigitalRentals() const
         +bool hasActiveDigitalRental(int movieId, time_point currentTime) const
         +int cleanupExpiredRentals(time_point currentTime)
         +void displayDigitalRentals(ostream& os, time_point currentTime) const
-        +friend ostream& operator<<(ostream& os, const User& user)
     }
 
-    class LibraryException {
-        +LibraryException(string message)
-    }
-    class MediaNotFoundException {
-        +MediaNotFoundException(string message)
-    }
-    class MediaUnavailableException {
-        +MediaUnavailableException(string message)
-    }
-    class AgeRestrictionException {
-        +AgeRestrictionException(string message)
-    }
-    class UserNotFoundException {
-        +UserNotFoundException(string message)
-    }
-    class InvalidDataException {
-        +InvalidDataException(string message)
+    class LibrarySerializer {
+        +static void saveToFile(string path, const LibraryManager& mgr)
+        +static void loadFromFile(string path, LibraryManager& mgr)
     }
 
     class LibraryManager {
@@ -139,59 +135,47 @@ classDiagram
         -int nextUserId
         -int simulatedHoursOffset
         +LibraryManager()
-        +int addBook(string title, int year, string author, int pageCount, string isbn)
-        +int addMovie(string title, int year, string director, int durationMinutes, int ageRating, double digitalPrice)
-        +int addUser(string fullName, int age)
+        +int addBook(...)
+        +int addMovie(...)
+        +int addUser(...)
+        +int addUserWithLogin(...)
+        +User* findUserByLogin(string username)
+        +bool loginExists(string username) const
         +void removeMedia(int id)
         +Media* findMediaById(int id)
-        +const Media* findMediaById(int id) const
         +User* findUserById(int userId)
-        +const User* findUserById(int userId) const
         +void updateMediaTitle(int id, string newTitle)
         +void displayAllMedia() const
         +void displayAllUsers() const
         +void borrowMedia(int mediaId, int userId)
         +ReturnInfo returnMedia(int mediaId)
+        +void extendLoan(int mediaId, int userId)
         +double rentMovieOnline(int movieId, int userId)
         +int cleanupAllExpiredDigitalRentals()
         +void displayUserDigitalRentals(int userId) const
         +void advanceSimulatedTime(int hours)
-        +int getSimulatedHoursOffset() const
         +time_point getCurrentTime() const
-        +seedData() void
-        +const vector~unique_ptr~Media~~& getCatalog() const
-        +const vector~User~& getUsers() const
+        +void seedData()
     }
 
     Media <|-- Book : dziedziczenie
     Media <|-- Movie : dziedziczenie
-    LibraryException <|-- MediaNotFoundException : dziedziczenie
-    LibraryException <|-- MediaUnavailableException : dziedziczenie
-    LibraryException <|-- AgeRestrictionException : dziedziczenie
-    LibraryException <|-- UserNotFoundException : dziedziczenie
-    LibraryException <|-- InvalidDataException : dziedziczenie
-
-    LibraryManager *-- Media : kompozycja (std::unique_ptr)
-    LibraryManager o-- User : agregacja / kolekcja uzytkownikow
-    User *-- DigitalRental : kompozycja subskrypcji cyfrowych
-    LibraryManager ..> LibraryException : rzuca wyjatki
-    LibraryManager ..> Movie : dynamic_cast (walidacja wieku i VOD)
-    LibraryManager ..> DigitalRental : tworzy subskrypcje
+    LibraryManager *-- Media : zarzadzanie pamiecia (unique_ptr)
+    LibraryManager o-- User : agregacja
+    User *-- DigitalRental : kompozycja subskrypcji
+    LibrarySerializer ..> LibraryManager : odczyt i zapis stanu (persistence)
 ```
 
 ---
 
-## Opis relacji w diagramie UML (dla prowadzącego)
+## Opis Relacji i Wzorców Architektonicznych
 
-1. **Dziedziczenie (Generalizacja)**:
-   - Klasy `Book` oraz `Movie` dziedziczą publicznie po klasie abstrakcyjnej `Media`.
-   - Klasy wyjątków dziedziczą po `LibraryException` (`std::runtime_error`).
-2. **Kompozycja**:
-   - `LibraryManager` zarządza cyklem życia zasobów w `catalog` typu `std::vector<std::unique_ptr<Media>>`.
-   - `User` posiada kolekcję `digitalRentals` typu `std::vector<DigitalRental>`. Subskrypcja online (48h) jest trwale powiązana z użytkownikiem i automatycznie usuwana po wygaśnięciu.
-3. **Agregacja**:
-   - `LibraryManager` gromadzi obiekty `User`.
-4. **Dystrybucja cyfrowa filmów (VOD 48h)**:
-   - Każdy obiekt `Movie` posiada atrybut `digitalPrice` (stawka za 48-godzinny dostęp cyfrowy).
-   - Metoda `rentMovieOnline()` weryfikuje wiek użytkownika (`dynamic_cast<Movie*>`), pobiera opłatę i rejestruje subskrypcję.
-   - Po upływie 48 godzin subskrypcja wygasa i jest automatycznie usuwana z konta czytelnika (`cleanupExpiredRentals()`).
+1. **Dwa Niezależne Panele Konsolowe**:
+   - `library_app.exe` — interfejs administratora (CRUD mediów, użytkowników, tradycyjne wypożyczenia i zwroty z karami, symulacja upływu czasu).
+   - `user_app.exe` — interfejs klienta (uwierzytelnianie, rejestracja, VOD na 48h, darmowe przedłużanie wypożyczeń o 7 dni, sprawdzanie subskrypcji).
+2. **Persistence i Synchronizacja Stanu (`LibrarySerializer`)**:
+   - Stan obu aplikacji synchronizowany jest w czasie rzeczywistym poprzez plik tekstowy `data/library.dat`. Każda operacja zapisu aktualizuje plik, a operacje odczytu synchronizują stan przed prezentacją.
+3. **Bezpieczeństwo i Hashowanie Haseł**:
+   - Klasa `User` przechowuje wyłącznie skrót hasła wyliczony algorytmem djb2.
+4. **Model Czasu i Dystrybucja VOD**:
+   - Automatyczne wygaszanie dostępu do wypożyczeń online po 48h oraz automatyczna kalkulacja kar za zwroty fizyczne.

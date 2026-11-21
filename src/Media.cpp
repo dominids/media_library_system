@@ -70,6 +70,17 @@ void Media::resetBorrowInfo() {
     borrowedByUserId = -1;
 }
 
+void Media::setRawBorrowState(bool available, int borrowedBy, chrono::system_clock::time_point bTime, chrono::system_clock::time_point dTime) {
+    isAvailable = available;
+    borrowedByUserId = borrowedBy;
+    borrowTime = bTime;
+    dueTime = dTime;
+}
+
+void Media::extendDueDate(int days) {
+    dueTime += chrono::hours(days * 24);
+}
+
 chrono::system_clock::time_point Media::getBorrowTime() const {
     return borrowTime;
 }
