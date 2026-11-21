@@ -5,6 +5,7 @@
 #include "Book.hpp"
 #include "Movie.hpp"
 #include "User.hpp"
+#include "Exceptions.hpp"
 
 #include <vector>
 #include <memory>
@@ -26,19 +27,19 @@ public:
     int addMovie(const string& title, int year, const string& director, int durationMinutes, int ageRating);
     int addUser(const string& fullName, int age);
 
-    bool removeMedia(int id);
+    void removeMedia(int id);
     Media* findMediaById(int id);
     const Media* findMediaById(int id) const;
 
     User* findUserById(int userId);
     const User* findUserById(int userId) const;
 
-    bool updateMediaTitle(int id, const string& newTitle);
+    void updateMediaTitle(int id, const string& newTitle);
 
     void displayAllMedia() const;
     void displayAllUsers() const;
 
-    bool borrowMedia(int mediaId, int userId);
+    void borrowMedia(int mediaId, int userId);
     double returnMedia(int mediaId, int daysOverdue);
 
     void seedData();

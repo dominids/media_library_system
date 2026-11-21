@@ -24,16 +24,16 @@ int LibraryManager::addUser(const string& fullName, int age) {
     return id;
 }
 
-bool LibraryManager::removeMedia(int id) {
+void LibraryManager::removeMedia(int id) {
     auto it = find_if(catalog.begin(), catalog.end(), [id](const unique_ptr<Media>& item) {
         return item->getId() == id;
     });
 
     if (it != catalog.end()) {
         catalog.erase(it);
-        return true;
+        return;
     }
-    return false;
+    throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(id));
 }
 
 Media* LibraryManager::findMediaById(int id) {
@@ -72,13 +72,12 @@ const User* LibraryManager::findUserById(int userId) const {
     return nullptr;
 }
 
-bool LibraryManager::updateMediaTitle(int id, const string& newTitle) {
+void LibraryManager::updateMediaTitle(int id, const string& newTitle) {
     Media* media = findMediaById(id);
-    if (media) {
-        media->setTitle(newTitle);
-        return true;
+    if (!media) {
+        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(id));
     }
-    return false;
+    media->setTitle(newTitle);
 }
 
 void LibraryManager::displayAllMedia() const {
@@ -103,23 +102,45 @@ void LibraryManager::displayAllUsers() const {
     }
 }
 
-bool LibraryManager::borrowMedia(int mediaId, int userId) {
+void LibraryManager::borrowMedia(int mediaId, int userId) {
     Media* media = findMediaById(mediaId);
-    if (!media) return false;
+    if (!media) {
+        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(mediaId));
+    }
 
     User* user = findUserById(userId);
-    if (!user) return false;
+    if (!user) {
+        throw UserNotFoundException("Nie znaleziono uzytkownika o ID: " + to_string(userId));
+    }
 
-    if (!media->getIsAvailable()) return false;
+    if (!media->getIsAvailable()) {
+        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") jest juz wypozyczona!");
+    }
+
+    // Swiadome uzycie dynamic_cast do sprawdzenia typu pochodnego Movie i weryfikacji ograniczenia wiekowego
+    if (const Movie* movie = dynamic_cast<const Movie*>(media)) {
+        if (user->getAge() < movie->getAgeRating()) {
+            throw AgeRestrictionException("Ograniczenie wiekowe: Uzytkownik " + user->getFullName() +
+                                          " (wiek: " + to_string(user->getAge()) +
+                                          ") nie spelnia wymogu wiekowego dla filmu \"" +
+                                          movie->getTitle() + "\" (wymagane: " +
+                                          to_string(movie->getAgeRating()) + "+ lat)!");
+        }
+    }
 
     media->setAvailable(false);
     media->setBorrowedByUserId(userId);
-    return true;
 }
 
 double LibraryManager::returnMedia(int mediaId, int daysOverdue) {
     Media* media = findMediaById(mediaId);
-    if (!media || media->getIsAvailable()) return -1.0;
+    if (!media) {
+        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(mediaId));
+    }
+
+    if (media->getIsAvailable()) {
+        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") nie jest wypozyczona!");
+    }
 
     double fee = media->calculateLateFee(daysOverdue);
     media->setAvailable(true);
