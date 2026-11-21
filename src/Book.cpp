@@ -1,10 +1,15 @@
 #include "Book.hpp"
+#include "Exceptions.hpp"
 
 using namespace std;
 
 Book::Book(int id, const string& title, int releaseYear,
            const string& author, int pageCount, const string& isbn)
-    : Media(id, title, releaseYear), author(author), pageCount(pageCount), isbn(isbn) {}
+    : Media(id, title, releaseYear), author(author), pageCount(pageCount), isbn(isbn) {
+    if (pageCount <= 0) {
+        throw InvalidDataException("Liczba stron ksiazki musi byc wieksza od zera (podano: " + to_string(pageCount) + ").");
+    }
+}
 
 string Book::getAuthor() const {
     return author;
@@ -19,14 +24,23 @@ string Book::getIsbn() const {
 }
 
 void Book::setAuthor(const string& newAuthor) {
+    if (newAuthor.empty()) {
+        throw InvalidDataException("Autor nie moze byc pusty.");
+    }
     author = newAuthor;
 }
 
 void Book::setPageCount(int pages) {
+    if (pages <= 0) {
+        throw InvalidDataException("Liczba stron ksiazki musi byc wieksza od zera (podano: " + to_string(pages) + ").");
+    }
     pageCount = pages;
 }
 
 void Book::setIsbn(const string& newIsbn) {
+    if (newIsbn.empty()) {
+        throw InvalidDataException("Numer ISBN nie moze byc pusty.");
+    }
     isbn = newIsbn;
 }
 

@@ -14,28 +14,73 @@
 
 using namespace std;
 
-int readInt(const string& prompt) {
-    int value;
+string trim(const string& str) {
+    size_t first = str.find_first_not_of(" \t\r\n");
+    if (first == string::npos) return "";
+    size_t last = str.find_last_not_of(" \t\r\n");
+    return str.substr(first, last - first + 1);
+}
+
+string removeBom(string s) {
+    if (s.size() >= 3 &&
+        static_cast<unsigned char>(s[0]) == 0xEF &&
+        static_cast<unsigned char>(s[1]) == 0xBB &&
+        static_cast<unsigned char>(s[2]) == 0xBF) {
+        s = s.substr(3);
+    }
+    return trim(s);
+}
+
+int readInt(const string& prompt, int minValue = numeric_limits<int>::min(), int maxValue = numeric_limits<int>::max()) {
     while (true) {
         cout << prompt;
-        if (cin >> value) {
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            return value;
+        string line;
+        if (!getline(cin, line)) {
+            return minValue;
         }
-        cout << "[BLAD] Niepoprawna wartosc! Wprowadz liczbe calkowita.\n";
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        string s = removeBom(line);
+        if (s.empty()) {
+            cout << "[BLAD] Pole nie moze byc puste! Wprowadz liczbe calkowita.\n";
+            continue;
+        }
+
+        try {
+            size_t idx = 0;
+            int val = stoi(s, &idx);
+            if (idx != s.length()) {
+                cout << "[BLAD] Niepoprawny format! Wprowadz sama liczbe calkowita.\n";
+                continue;
+            }
+            if (val < minValue) {
+                cout << "[BLAD] Wartosc nie moze byc mniejsza niz " << minValue << "! Sprobuj ponownie.\n";
+                continue;
+            }
+            if (val > maxValue) {
+                cout << "[BLAD] Wartosc nie moze byc wieksza niz " << maxValue << "! Sprobuj ponownie.\n";
+                continue;
+            }
+            return val;
+        } catch (const out_of_range&) {
+            cout << "[BLAD] Podana liczba wykracza poza dozwolony zakres pamieci (overflow)!\n";
+        } catch (const invalid_argument&) {
+            cout << "[BLAD] Niepoprawna wartosc! Wprowadz liczbe calkowita.\n";
+        }
     }
 }
 
 string readLine(const string& prompt) {
-    cout << prompt;
-    string input;
-    getline(cin, input);
-    while (input.empty()) {
-        getline(cin, input);
+    while (true) {
+        cout << prompt;
+        string line;
+        if (!getline(cin, line)) {
+            return "";
+        }
+        string s = removeBom(line);
+        if (!s.empty()) {
+            return s;
+        }
+        cout << "[BLAD] Pole nie moze byc puste ani skladac sie z samych spacji! Sprobuj ponownie.\n";
     }
-    return input;
 }
 
 void printMenu() {
@@ -70,7 +115,7 @@ int main() {
 
     while (running) {
         printMenu();
-        int choice = readInt("Wybierz opcje (1-10): ");
+        int choice = readInt("Wybierz opcje (1-10): ", 1, 10);
 
         try {
             switch (choice) {
@@ -81,9 +126,9 @@ int main() {
                 case 2: {
                     cout << "\n--- DODAWANIE NOWEJ KSIAZKI ---\n";
                     string title = readLine("Tytul: ");
-                    int year = readInt("Rok wydania: ");
+                    int year = readInt("Rok wydania (od 1): ", 1, 2100);
                     string author = readLine("Autor: ");
-                    int pages = readInt("Liczba stron: ");
+                    int pages = readInt("Liczba stron (wieksza od 0): ", 1);
                     string isbn = readLine("Numer ISBN: ");
 
                     int id = library.addBook(title, year, author, pages, isbn);
@@ -93,10 +138,10 @@ int main() {
                 case 3: {
                     cout << "\n--- DODAWANIE NOWEGO FILMU ---\n";
                     string title = readLine("Tytul: ");
-                    int year = readInt("Rok wydania: ");
+                    int year = readInt("Rok wydania (od 1880): ", 1880, 2100);
                     string director = readLine("Rezyser: ");
-                    int duration = readInt("Czas trwania (w minutach): ");
-                    int ageRating = readInt("Ograniczenie wiekowe (np. 12, 16, 18): ");
+                    int duration = readInt("Czas trwania w minutach (wiekszy od 0): ", 1);
+                    int ageRating = readInt("Ograniczenie wiekowe (od 0 do 120, np. 0, 12, 16, 18): ", 0, 120);
 
                     int id = library.addMovie(title, year, director, duration, ageRating);
                     cout << "[SUKCES] Pomyslnie dodano film z ID: " << id << "\n";
@@ -104,7 +149,7 @@ int main() {
                 }
                 case 4: {
                     cout << "\n--- EDYCJA TYTULU ZASOBU ---\n";
-                    int id = readInt("Podaj ID pozycji do modyfikacji: ");
+                    int id = readInt("Podaj ID pozycji do modyfikacji: ", 1);
                     string newTitle = readLine("Podaj nowy tytul: ");
                     library.updateMediaTitle(id, newTitle);
                     cout << "[SUKCES] Zaktualizowano tytul dla pozycji ID " << id << ".\n";
@@ -112,7 +157,7 @@ int main() {
                 }
                 case 5: {
                     cout << "\n--- USUWANIE ZASOBU Z KATALOGU ---\n";
-                    int id = readInt("Podaj ID pozycji do usuniecia: ");
+                    int id = readInt("Podaj ID pozycji do usuniecia: ", 1);
                     library.removeMedia(id);
                     cout << "[SUKCES] Pozycja o ID " << id << " zostala usunieta.\n";
                     break;
@@ -121,31 +166,29 @@ int main() {
                     cout << "\n--- ZARZADZANIE UZYTKOWNIKAMI ---\n";
                     cout << "1. Wyswietl liste uzytkownikow\n";
                     cout << "2. Zarejestruj nowego uzytkownika\n";
-                    int subChoice = readInt("Wybierz opcje (1-2): ");
+                    int subChoice = readInt("Wybierz opcje (1-2): ", 1, 2);
                     if (subChoice == 1) {
                         library.displayAllUsers();
                     } else if (subChoice == 2) {
                         string name = readLine("Imie i nazwisko: ");
-                        int age = readInt("Wiek: ");
+                        int age = readInt("Wiek (1-120): ", 1, 120);
                         int uid = library.addUser(name, age);
                         cout << "[SUKCES] Zarejestrowano uzytkownika \"" << name << "\" z ID: " << uid << "\n";
-                    } else {
-                        cout << "[OSTRZEZENIE] Nieznana opcja.\n";
                     }
                     break;
                 }
                 case 7: {
                     cout << "\n--- WYPOZYCZENIE POZYCJI ---\n";
-                    int mediaId = readInt("Podaj ID wypozyczanej pozycji: ");
-                    int userId = readInt("Podaj ID uzytkownika: ");
+                    int mediaId = readInt("Podaj ID wypozyczanej pozycji: ", 1);
+                    int userId = readInt("Podaj ID uzytkownika: ", 1);
                     library.borrowMedia(mediaId, userId);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie wypozyczona uzytkownikowi ID " << userId << ".\n";
                     break;
                 }
                 case 8: {
                     cout << "\n--- ZWROT POZYCJI ---\n";
-                    int mediaId = readInt("Podaj ID zwracanej pozycji: ");
-                    int daysOverdue = readInt("Liczba dni spoznienia (0 jesli zwrot w terminie): ");
+                    int mediaId = readInt("Podaj ID zwracanej pozycji: ", 1);
+                    int daysOverdue = readInt("Liczba dni spoznienia (0 jesli zwrot w terminie): ", 0);
                     double fee = library.returnMedia(mediaId, daysOverdue);
                     cout << fixed << setprecision(2);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala zwrocona.\n";
@@ -158,8 +201,8 @@ int main() {
                 }
                 case 9: {
                     cout << "\n--- POROWNANIE DWOCH ZASOBOW (operator==) ---\n";
-                    int id1 = readInt("Podaj ID pierwszej pozycji: ");
-                    int id2 = readInt("Podaj ID drugiej pozycji: ");
+                    int id1 = readInt("Podaj ID pierwszej pozycji: ", 1);
+                    int id2 = readInt("Podaj ID drugiej pozycji: ", 1);
 
                     Media* m1 = library.findMediaById(id1);
                     Media* m2 = library.findMediaById(id2);

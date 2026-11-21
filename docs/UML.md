@@ -93,6 +93,9 @@ classDiagram
     class UserNotFoundException {
         +UserNotFoundException(string message)
     }
+    class InvalidDataException {
+        +InvalidDataException(string message)
+    }
 
     class LibraryManager {
         -vector~unique_ptr~Media~~ catalog
@@ -124,6 +127,7 @@ classDiagram
     LibraryException <|-- MediaUnavailableException : dziedziczenie
     LibraryException <|-- AgeRestrictionException : dziedziczenie
     LibraryException <|-- UserNotFoundException : dziedziczenie
+    LibraryException <|-- InvalidDataException : dziedziczenie
 
     LibraryManager *-- Media : kompozycja (std::unique_ptr)
     LibraryManager o-- User : agregacja / kolekcja uzytkownikow
@@ -137,7 +141,7 @@ classDiagram
 
 1. **Dziedziczenie (Generalizacja)**:
    - Klasy `Book` oraz `Movie` dziedziczą publicznie po klasie abstrakcyjnej `Media`.
-   - Klasy wyjątków `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException` dziedziczą po `LibraryException` (która dziedziczy po `std::runtime_error`).
+   - Klasy wyjątków `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException`, `InvalidDataException` dziedziczą po `LibraryException` (która dziedziczy po `std::runtime_error`).
 2. **Kompozycja**:
    - `LibraryManager` posiada kolekcję `catalog` typu `std::vector<std::unique_ptr<Media>>`. Obiekty mediów są tworzone przez menedżera za pomocą `std::make_unique` i ich cykl życia jest ściśle związany z instancją menedżera. Usunięcie menedżera lub elementu z wektora automatycznie i bezpiecznie zwalnia pamięć (brak wycieków).
 3. **Agregacja**:

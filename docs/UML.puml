@@ -95,6 +95,10 @@ class UserNotFoundException {
     + UserNotFoundException(message: string)
 }
 
+class InvalidDataException {
+    + InvalidDataException(message: string)
+}
+
 class LibraryManager {
     - catalog : vector<unique_ptr<Media>>
     - users : vector<User>
@@ -129,6 +133,7 @@ LibraryException <|-- MediaNotFoundException
 LibraryException <|-- MediaUnavailableException
 LibraryException <|-- AgeRestrictionException
 LibraryException <|-- UserNotFoundException
+LibraryException <|-- InvalidDataException
 
 ' Kompozycja i agregacja
 LibraryManager *-- "0..*" Media : zarzadza cyklem zycia (unique_ptr)

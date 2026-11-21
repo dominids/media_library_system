@@ -1,4 +1,5 @@
 #include "Media.hpp"
+#include "Exceptions.hpp"
 
 using namespace std;
 
@@ -6,7 +7,11 @@ Media::Media()
     : id(0), title(""), releaseYear(0), isAvailable(true), borrowedByUserId(-1) {}
 
 Media::Media(int id, const string& title, int releaseYear)
-    : id(id), title(title), releaseYear(releaseYear), isAvailable(true), borrowedByUserId(-1) {}
+    : id(id), title(title), releaseYear(releaseYear), isAvailable(true), borrowedByUserId(-1) {
+    if (releaseYear <= 0) {
+        throw InvalidDataException("Rok wydania musi byc wiekszy od zera (podano: " + to_string(releaseYear) + ").");
+    }
+}
 
 int Media::getId() const {
     return id;
@@ -29,10 +34,16 @@ int Media::getBorrowedByUserId() const {
 }
 
 void Media::setTitle(const string& newTitle) {
+    if (newTitle.empty()) {
+        throw InvalidDataException("Tytul nie moze byc pusty.");
+    }
     title = newTitle;
 }
 
 void Media::setReleaseYear(int year) {
+    if (year <= 0) {
+        throw InvalidDataException("Rok wydania musi byc wiekszy od zera (podano: " + to_string(year) + ").");
+    }
     releaseYear = year;
 }
 

@@ -36,4 +36,10 @@ public:
         : LibraryException(message) {}
 };
 
+class InvalidDataException : public LibraryException {
+public:
+    explicit InvalidDataException(const string& message)
+        : LibraryException(message) {}
+};
+
 #endif // EXCEPTIONS_HPP

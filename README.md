@@ -50,8 +50,8 @@ media_library_system/
 | **Zarządzanie pamięcią i sprytne wskaźniki** | Użycie `std::vector<std::unique_ptr<Media>>` oraz `std::make_unique` zapobiega wszelkim wyciekom pamięci bez konieczności ręcznego `delete`. | `LibraryManager.hpp`, `LibraryManager.cpp` |
 | **Rzutowanie dynamiczne (`dynamic_cast`)** | W metodzie `borrowMedia()` następuje bezpieczne rzutowanie `dynamic_cast<const Movie*>(media)` w celu sprawdzenia ograniczenia wiekowego (`ageRating` vs `user.getAge()`). | `src/LibraryManager.cpp` (metoda `borrowMedia`) |
 | **Przeciążanie operatorów** | `operator==` porównujący media po `id`; polimorficzny `operator<<` współpracujący z `std::ostream`. | `Media.hpp`, `Media.cpp`, `User.hpp`, `User.cpp` |
-| **Własna hierarchia wyjątków** | Klasy `LibraryException`, `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException` dziedziczące po `std::runtime_error`. | `include/Exceptions.hpp` |
-| **Odporny interfejs użytkownika** | Pętla menu w `main.cpp` z walidacją wejścia (`cin.fail()`, czyszczenie bufora) oraz blokiem `try ... catch`. | `src/main.cpp` |
+| **Własna hierarchia wyjątków** | Klasy `LibraryException`, `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException`, `InvalidDataException` dziedziczące po `std::runtime_error`. | `include/Exceptions.hpp` |
+| **Odporny interfejs użytkownika i walidacja** | Pętla menu w `main.cpp` z rygorystyczną walidacją wejścia (`cin.fail()`, sprawdzanie wartości dodatnich, usuwanie białych znaków, blok `try ... catch`). Uniemożliwia wprowadzenie ujemnej liczby stron, ujemnego wieku, pustych napisów itp. | `src/main.cpp`, `src/LibraryManager.cpp` |
 | **Historia prac w Git** | 8 logicznych, atomowych commitów dokumentujących kolejne fazy powstawania aplikacji. | `git log --oneline` |
 
 ---
