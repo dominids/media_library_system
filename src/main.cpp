@@ -256,14 +256,15 @@ int main() {
                 case 8: {
                     cout << "\n--- ZWROT POZYCJI FIZYCZNEJ ---\n";
                     int mediaId = promptMediaId(library, "Podaj ID zwracanej pozycji: ");
-                    int daysOverdue = readInt("Liczba dni spoznienia (0 jesli zwrot w terminie): ", 0);
-                    double fee = library.returnMedia(mediaId, daysOverdue);
+                    ReturnInfo info = library.returnMedia(mediaId);
                     cout << fixed << setprecision(2);
-                    cout << "[SUKCES] Pozycja ID " << mediaId << " zostala zwrocona.\n";
-                    if (fee > 0.0) {
-                        cout << "[OPLATA] Naliczono kare za przetrzymanie (" << daysOverdue << " dni): " << fee << " PLN.\n";
+                    cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie zwrocona do biblioteki.\n";
+                    cout << "[TERMIN] Wyznaczony termin zwrotu wynosil: " << info.dueDate << "\n";
+                    if (info.daysOverdue > 0) {
+                        cout << "[AUTOMATYCZNA KALKULACJA KARY] Wykryto spoznienie: " << info.daysOverdue << " dni po terminie!\n";
+                        cout << "[OPLATA] Naliczona kara wynosi: " << info.fee << " PLN.\n";
                     } else {
-                        cout << "[OPLATA] Zwrot w terminie - brak oplat karnych (0.00 PLN).\n";
+                        cout << "[AUTOMATYCZNA KALKULACJA KARY] Zwrot nastapil w terminie. Brak oplat karnych (0.00 PLN).\n";
                     }
                     break;
                 }

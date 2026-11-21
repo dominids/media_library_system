@@ -165,15 +165,10 @@ void LibraryManager::borrowMedia(int mediaId, int userId) {
         }
     }
 
-    media->setAvailable(false);
-    media->setBorrowedByUserId(userId);
+    media->setBorrowInfo(userId, getCurrentTime(), 14); // 14 dni termin zwrotu
 }
 
-double LibraryManager::returnMedia(int mediaId, int daysOverdue) {
-    if (daysOverdue < 0) {
-        throw InvalidDataException("Liczba dni spoznienia nie moze byc ujemna (podano: " + to_string(daysOverdue) + ").");
-    }
-
+ReturnInfo LibraryManager::returnMedia(int mediaId) {
     Media* media = findMediaById(mediaId);
     if (!media) {
         throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(mediaId));
@@ -183,10 +178,12 @@ double LibraryManager::returnMedia(int mediaId, int daysOverdue) {
         throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") nie jest wypozyczona!");
     }
 
+    int daysOverdue = media->calculateOverdueDays(getCurrentTime());
     double fee = media->calculateLateFee(daysOverdue);
-    media->setAvailable(true);
-    media->setBorrowedByUserId(-1);
-    return fee;
+    string dueDate = media->getFormattedDueDate();
+
+    media->resetBorrowInfo();
+    return {fee, daysOverdue, dueDate};
 }
 
 double LibraryManager::rentMovieOnline(int movieId, int userId) {

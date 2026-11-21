@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <string>
+#include <chrono>
+#include <ctime>
 
 using namespace std;
 
@@ -13,6 +15,8 @@ protected:
     int releaseYear;
     bool isAvailable;
     int borrowedByUserId;
+    chrono::system_clock::time_point borrowTime;
+    chrono::system_clock::time_point dueTime;
 
 public:
     Media();
@@ -29,6 +33,14 @@ public:
     void setReleaseYear(int year);
     void setAvailable(bool status);
     void setBorrowedByUserId(int userId);
+
+    void setBorrowInfo(int userId, chrono::system_clock::time_point currentTime, int loanDays = 14);
+    void resetBorrowInfo();
+
+    chrono::system_clock::time_point getBorrowTime() const;
+    chrono::system_clock::time_point getDueTime() const;
+    int calculateOverdueDays(chrono::system_clock::time_point currentTime) const;
+    string getFormattedDueDate() const;
 
     virtual void printDetails(ostream& os = cout) const;
     virtual double calculateLateFee(int daysOverdue) const = 0;

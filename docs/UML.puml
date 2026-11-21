@@ -10,6 +10,8 @@ abstract class Media {
     # releaseYear : int
     # isAvailable : bool
     # borrowedByUserId : int
+    # borrowTime : time_point
+    # dueTime : time_point
     + Media()
     + Media(id: int, title: string, releaseYear: int)
     + virtual ~Media() = default
@@ -22,6 +24,12 @@ abstract class Media {
     + setReleaseYear(year: int) : void
     + setAvailable(status: bool) : void
     + setBorrowedByUserId(userId: int) : void
+    + setBorrowInfo(userId: int, currentTime: time_point, loanDays: int) : void
+    + resetBorrowInfo() : void
+    + getBorrowTime() : time_point
+    + getDueTime() : time_point
+    + calculateOverdueDays(currentTime: time_point) : int
+    + getFormattedDueDate() : string
     + virtual printDetails(os: ostream&) : void
     + {abstract} virtual calculateLateFee(daysOverdue: int) : double
     + {abstract} virtual getType() : string
@@ -145,7 +153,7 @@ class LibraryManager {
     + displayAllMedia() : void const
     + displayAllUsers() : void const
     + borrowMedia(mediaId: int, userId: int) : void
-    + returnMedia(mediaId: int, daysOverdue: int) : double
+    + returnMedia(mediaId: int) : ReturnInfo
     + rentMovieOnline(movieId: int, userId: int) : double
     + cleanupAllExpiredDigitalRentals() : int
     + displayUserDigitalRentals(userId: int) : void const

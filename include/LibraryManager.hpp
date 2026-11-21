@@ -15,6 +15,12 @@
 
 using namespace std;
 
+struct ReturnInfo {
+    double fee;
+    int daysOverdue;
+    string dueDate;
+};
+
 class LibraryManager {
 private:
     vector<unique_ptr<Media>> catalog;
@@ -43,14 +49,14 @@ public:
     void displayAllUsers() const;
 
     void borrowMedia(int mediaId, int userId);
-    double returnMedia(int mediaId, int daysOverdue);
+    ReturnInfo returnMedia(int mediaId);
 
     // Dystrybucja cyfrowa (wypozyczenia online na 48h)
     double rentMovieOnline(int movieId, int userId);
     int cleanupAllExpiredDigitalRentals();
     void displayUserDigitalRentals(int userId) const;
 
-    // Symulacja uplywu czasu dla demonstracji automatycznego zwrotu
+    // Symulacja uplywu czasu dla demonstracji automatycznego zwrotu i kar
     void advanceSimulatedTime(int hours);
     int getSimulatedHoursOffset() const;
     chrono::system_clock::time_point getCurrentTime() const;

@@ -13,6 +13,8 @@ classDiagram
         #int releaseYear
         #bool isAvailable
         #int borrowedByUserId
+        #time_point borrowTime
+        #time_point dueTime
         +Media()
         +Media(int id, string title, int year)
         +virtual ~Media() = default
@@ -25,6 +27,12 @@ classDiagram
         +void setReleaseYear(int year)
         +void setAvailable(bool status)
         +void setBorrowedByUserId(int userId)
+        +void setBorrowInfo(int userId, time_point currentTime, int loanDays)
+        +void resetBorrowInfo()
+        +time_point getBorrowTime() const
+        +time_point getDueTime() const
+        +int calculateOverdueDays(time_point currentTime) const
+        +string getFormattedDueDate() const
         +virtual void printDetails(ostream& os) const
         +virtual double calculateLateFee(int daysOverdue) const = 0
         +virtual string getType() const = 0
@@ -143,7 +151,7 @@ classDiagram
         +void displayAllMedia() const
         +void displayAllUsers() const
         +void borrowMedia(int mediaId, int userId)
-        +double returnMedia(int mediaId, int daysOverdue)
+        +ReturnInfo returnMedia(int mediaId)
         +double rentMovieOnline(int movieId, int userId)
         +int cleanupAllExpiredDigitalRentals()
         +void displayUserDigitalRentals(int userId) const
