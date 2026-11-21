@@ -120,6 +120,27 @@ string readLine(const string& prompt) {
     }
 }
 
+bool askYesNo(const string& question) {
+    while (true) {
+        cout << question << " (t/n): ";
+        string line;
+        if (!getline(cin, line)) {
+            return false;
+        }
+        string s = removeBom(line);
+        if (s == "t" || s == "T" || s == "tak" || s == "TAK" || s == "y" || s == "Y") return true;
+        if (s == "n" || s == "N" || s == "nie" || s == "NIE" || s == "no" || s == "NO" || s.empty()) return false;
+        cout << "[BLAD] Wprowadz 't' (tak) lub 'n' (nie).\n";
+    }
+}
+
+int promptUserId(const LibraryManager& library, const string& prompt = "Podaj ID uzytkownika: ") {
+    if (askYesNo("Czy chcesz wyswietlic liste zarejestrowanych uzytkownikow?")) {
+        library.displayAllUsers();
+    }
+    return readInt(prompt, 1);
+}
+
 void printMenu() {
     cout << "\n========================================\n";
     cout << "  SYSTEM ZARZADZANIA WYPOZYCZALNIA MEDIOW\n";
@@ -220,7 +241,7 @@ int main() {
                 case 7: {
                     cout << "\n--- WYPOZYCZENIE FIZYCZNE ---\n";
                     int mediaId = readInt("Podaj ID wypozyczanej pozycji: ", 1);
-                    int userId = readInt("Podaj ID uzytkownika: ", 1);
+                    int userId = promptUserId(library);
                     library.borrowMedia(mediaId, userId);
                     cout << "[SUKCES] Pozycja ID " << mediaId << " zostala pomyslnie wypozyczona uzytkownikowi ID " << userId << ".\n";
                     break;
@@ -242,7 +263,7 @@ int main() {
                 case 9: {
                     cout << "\n--- WYPOZYCZENIE FILMU ONLINE (CYFROWE VOD NA 48H) ---\n";
                     int movieId = readInt("Podaj ID filmu do wypozyczenia online: ", 1);
-                    int userId = readInt("Podaj ID uzytkownika: ", 1);
+                    int userId = promptUserId(library);
 
                     double price = library.rentMovieOnline(movieId, userId);
                     cout << fixed << setprecision(2);
@@ -253,7 +274,7 @@ int main() {
                 }
                 case 10: {
                     cout << "\n--- PRZEGLADANIE SUBSKRYPCJI ONLINE UZYTKOWNIKA ---\n";
-                    int userId = readInt("Podaj ID uzytkownika: ", 1);
+                    int userId = promptUserId(library);
                     library.displayUserDigitalRentals(userId);
                     break;
                 }
