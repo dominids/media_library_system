@@ -135,8 +135,7 @@ void printMenu() {
     cout << " 9. Wypozycz film ONLINE (dystrybucja cyfrowa na 48h)\n";
     cout << " 10. Wyswietl aktywne subskrypcje online uzytkownika\n";
     cout << " 11. Symuluj uplyw czasu (+godziny) i automatyczny zwrot VOD\n";
-    cout << " 12. Porownaj dwa zasoby (demonstracja operator==)\n";
-    cout << " 13. Wyjscie z programu\n";
+    cout << " 12. Wyjscie z programu\n";
     cout << "========================================\n";
 }
 
@@ -155,7 +154,7 @@ int main() {
 
     while (running) {
         printMenu();
-        int choice = readInt("Wybierz opcje (1-13): ", 1, 13);
+        int choice = readInt("Wybierz opcje (1-12): ", 1, 12);
 
         try {
             switch (choice) {
@@ -266,37 +265,12 @@ int main() {
                     break;
                 }
                 case 12: {
-                    cout << "\n--- POROWNANIE DWOCH ZASOBOW (operator==) ---\n";
-                    int id1 = readInt("Podaj ID pierwszej pozycji: ", 1);
-                    int id2 = readInt("Podaj ID drugiej pozycji: ", 1);
-
-                    Media* m1 = library.findMediaById(id1);
-                    Media* m2 = library.findMediaById(id2);
-
-                    if (!m1) {
-                        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(id1));
-                    }
-                    if (!m2) {
-                        throw MediaNotFoundException("Nie znaleziono pozycji o ID: " + to_string(id2));
-                    }
-
-                    cout << "\nObiekt 1: " << *m1 << "\n";
-                    cout << "Obiekt 2: " << *m2 << "\n";
-
-                    if (*m1 == *m2) {
-                        cout << "[WYNIK] Obiekty sa rowne (*m1 == *m2 jest TRUE) - posiadaja ten sam identyfikator ID.\n";
-                    } else {
-                        cout << "[WYNIK] Obiekty sa rozne (*m1 == *m2 jest FALSE) - posiadaja rozne identyfikatory ID.\n";
-                    }
-                    break;
-                }
-                case 13: {
                     cout << "\nZamykanie programu. Dziekujemy za skorzystanie z systemu!\n";
                     running = false;
                     break;
                 }
                 default: {
-                    cout << "[OSTRZEZENIE] Niepoprawny wybor! Wprowadz cyfre od 1 do 13.\n";
+                    cout << "[OSTRZEZENIE] Niepoprawny wybor! Wprowadz cyfre od 1 do 12.\n";
                     break;
                 }
             }
