@@ -68,6 +68,43 @@ int readInt(const string& prompt, int minValue = numeric_limits<int>::min(), int
     }
 }
 
+double readDouble(const string& prompt, double minValue = 0.0, double maxValue = numeric_limits<double>::max()) {
+    while (true) {
+        cout << prompt;
+        string line;
+        if (!getline(cin, line)) {
+            return minValue;
+        }
+        string s = removeBom(line);
+        if (s.empty()) {
+            cout << "[BLAD] Pole nie moze byc puste! Wprowadz liczbe.\n";
+            continue;
+        }
+
+        try {
+            size_t idx = 0;
+            double val = stod(s, &idx);
+            if (idx != s.length()) {
+                cout << "[BLAD] Niepoprawny format! Wprowadz prawidlowa kwote.\n";
+                continue;
+            }
+            if (val < minValue) {
+                cout << "[BLAD] Wartosc nie moze byc mniejsza niz " << fixed << setprecision(2) << minValue << "! Sprobuj ponownie.\n";
+                continue;
+            }
+            if (val > maxValue) {
+                cout << "[BLAD] Wartosc nie moze byc wieksza niz " << fixed << setprecision(2) << maxValue << "! Sprobuj ponownie.\n";
+                continue;
+            }
+            return val;
+        } catch (const out_of_range&) {
+            cout << "[BLAD] Podana liczba wykracza poza dozwolony zakres pamieci!\n";
+        } catch (const invalid_argument&) {
+            cout << "[BLAD] Niepoprawna wartosc! Wprowadz liczbe (np. 14.99).\n";
+        }
+    }
+}
+
 string readLine(const string& prompt) {
     while (true) {
         cout << prompt;
@@ -89,14 +126,17 @@ void printMenu() {
     cout << "========================================\n";
     cout << " 1. Wyswietl caly katalog mediow\n";
     cout << " 2. Dodaj nowa ksiazke\n";
-    cout << " 3. Dodaj nowy film\n";
+    cout << " 3. Dodaj nowy film (wraz z oplata cyfrowa VOD)\n";
     cout << " 4. Edytuj tytul zasobu\n";
     cout << " 5. Usun zasob z katalogu\n";
     cout << " 6. Zarzadzaj uzytkownikami (Rejestracja / Lista)\n";
-    cout << " 7. Wypozycz pozycje uzytkownikowi\n";
-    cout << " 8. Zwroc pozycje (kalkulacja kary)\n";
-    cout << " 9. Porownaj dwa zasoby (demonstracja operator==)\n";
-    cout << " 10. Wyjscie z programu\n";
+    cout << " 7. Wypozycz fizycznie pozycje uzytkownikowi\n";
+    cout << " 8. Zwroc fizyczna pozycje (kalkulacja kary)\n";
+    cout << " 9. Wypozycz film ONLINE (dystrybucja cyfrowa na 48h)\n";
+    cout << " 10. Wyswietl aktywne subskrypcje online uzytkownika\n";
+    cout << " 11. Symuluj uplyw czasu (+godziny) i automatyczny zwrot VOD\n";
+    cout << " 12. Porownaj dwa zasoby (demonstracja operator==)\n";
+    cout << " 13. Wyjscie z programu\n";
     cout << "========================================\n";
 }
 
@@ -115,7 +155,7 @@ int main() {
 
     while (running) {
         printMenu();
-        int choice = readInt("Wybierz opcje (1-10): ", 1, 10);
+        int choice = readInt("Wybierz opcje (1-13): ", 1, 13);
 
         try {
             switch (choice) {
@@ -142,8 +182,9 @@ int main() {
                     string director = readLine("Rezyser: ");
                     int duration = readInt("Czas trwania w minutach (wiekszy od 0): ", 1);
                     int ageRating = readInt("Ograniczenie wiekowe (od 0 do 120, np. 0, 12, 16, 18): ", 0, 120);
+                    double digitalPrice = readDouble("Oplata za wypozyczenie cyfrowe VOD w PLN (np. 14.99): ", 0.01);
 
-                    int id = library.addMovie(title, year, director, duration, ageRating);
+                    int id = library.addMovie(title, year, director, duration, ageRating, digitalPrice);
                     cout << "[SUKCES] Pomyslnie dodano film z ID: " << id << "\n";
                     break;
                 }
@@ -178,7 +219,7 @@ int main() {
                     break;
                 }
                 case 7: {
-                    cout << "\n--- WYPOZYCZENIE POZYCJI ---\n";
+                    cout << "\n--- WYPOZYCZENIE FIZYCZNE ---\n";
                     int mediaId = readInt("Podaj ID wypozyczanej pozycji: ", 1);
                     int userId = readInt("Podaj ID uzytkownika: ", 1);
                     library.borrowMedia(mediaId, userId);
@@ -186,7 +227,7 @@ int main() {
                     break;
                 }
                 case 8: {
-                    cout << "\n--- ZWROT POZYCJI ---\n";
+                    cout << "\n--- ZWROT POZYCJI FIZYCZNEJ ---\n";
                     int mediaId = readInt("Podaj ID zwracanej pozycji: ", 1);
                     int daysOverdue = readInt("Liczba dni spoznienia (0 jesli zwrot w terminie): ", 0);
                     double fee = library.returnMedia(mediaId, daysOverdue);
@@ -200,6 +241,31 @@ int main() {
                     break;
                 }
                 case 9: {
+                    cout << "\n--- WYPOZYCZENIE FILMU ONLINE (CYFROWE VOD NA 48H) ---\n";
+                    int movieId = readInt("Podaj ID filmu do wypozyczenia online: ", 1);
+                    int userId = readInt("Podaj ID uzytkownika: ", 1);
+
+                    double price = library.rentMovieOnline(movieId, userId);
+                    cout << fixed << setprecision(2);
+                    cout << "[SUKCES] Film ID " << movieId << " zostal wypozyczony online dla uzytkownika ID " << userId << "!\n";
+                    cout << "[VOD] Pobrano oplate dystrybucyjna: " << price << " PLN.\n";
+                    cout << "[VOD] Subskrypcja jest aktywna przez 48 godzin. Po tym czasie wygasnie i zostanie zwrocona automatycznie.\n";
+                    break;
+                }
+                case 10: {
+                    cout << "\n--- PRZEGLADANIE SUBSKRYPCJI ONLINE UZYTKOWNIKA ---\n";
+                    int userId = readInt("Podaj ID uzytkownika: ", 1);
+                    library.displayUserDigitalRentals(userId);
+                    break;
+                }
+                case 11: {
+                    cout << "\n--- SYMULACJA UPLYWU CZASU (TEST AUTOMATYCZNEGO ZWROTU) ---\n";
+                    cout << "Aktualne przesuniecie czasu: +" << library.getSimulatedHoursOffset() << "h\n";
+                    int hours = readInt("O ile godzin chcesz przesunac zegar symulacji? (np. 48 lub 49): ", 1);
+                    library.advanceSimulatedTime(hours);
+                    break;
+                }
+                case 12: {
                     cout << "\n--- POROWNANIE DWOCH ZASOBOW (operator==) ---\n";
                     int id1 = readInt("Podaj ID pierwszej pozycji: ", 1);
                     int id2 = readInt("Podaj ID drugiej pozycji: ", 1);
@@ -224,13 +290,13 @@ int main() {
                     }
                     break;
                 }
-                case 10: {
+                case 13: {
                     cout << "\nZamykanie programu. Dziekujemy za skorzystanie z systemu!\n";
                     running = false;
                     break;
                 }
                 default: {
-                    cout << "[OSTRZEZENIE] Niepoprawny wybor! Wprowadz cyfre od 1 do 10.\n";
+                    cout << "[OSTRZEZENIE] Niepoprawny wybor! Wprowadz cyfre od 1 do 13.\n";
                     break;
                 }
             }

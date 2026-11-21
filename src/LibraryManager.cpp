@@ -4,7 +4,8 @@
 
 using namespace std;
 
-LibraryManager::LibraryManager() : nextMediaId(1), nextUserId(1) {}
+LibraryManager::LibraryManager()
+    : nextMediaId(1), nextUserId(1), simulatedHoursOffset(0) {}
 
 int LibraryManager::addBook(const string& title, int year, const string& author, int pageCount, const string& isbn) {
     if (pageCount <= 0) {
@@ -22,7 +23,7 @@ int LibraryManager::addBook(const string& title, int year, const string& author,
     return id;
 }
 
-int LibraryManager::addMovie(const string& title, int year, const string& director, int durationMinutes, int ageRating) {
+int LibraryManager::addMovie(const string& title, int year, const string& director, int durationMinutes, int ageRating, double digitalPrice) {
     if (durationMinutes <= 0) {
         throw InvalidDataException("Czas trwania filmu musi byc wiekszy od zera (podano: " + to_string(durationMinutes) + " min).");
     }
@@ -35,9 +36,12 @@ int LibraryManager::addMovie(const string& title, int year, const string& direct
     if (title.empty() || director.empty()) {
         throw InvalidDataException("Pola tytul oraz rezyser nie moga byc puste.");
     }
+    if (digitalPrice <= 0.0) {
+        throw InvalidDataException("Oplata za dystrybucje cyfrowa musi byc wieksza od zera.");
+    }
 
     int id = nextMediaId++;
-    catalog.push_back(make_unique<Movie>(id, title, year, director, durationMinutes, ageRating));
+    catalog.push_back(make_unique<Movie>(id, title, year, director, durationMinutes, ageRating, digitalPrice));
     return id;
 }
 
@@ -147,7 +151,7 @@ void LibraryManager::borrowMedia(int mediaId, int userId) {
     }
 
     if (!media->getIsAvailable()) {
-        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") jest juz wypozyczona!");
+        throw MediaUnavailableException("Pozycja o ID " + to_string(mediaId) + " (\"" + media->getTitle() + "\") jest juz wypozyczona fizycznie!");
     }
 
     // Swiadome uzycie dynamic_cast do sprawdzenia typu pochodnego Movie i weryfikacji ograniczenia wiekowego
@@ -185,14 +189,90 @@ double LibraryManager::returnMedia(int mediaId, int daysOverdue) {
     return fee;
 }
 
+double LibraryManager::rentMovieOnline(int movieId, int userId) {
+    // Przed nowym wypozyczeniem czyscimy wygasle subskrypcje
+    cleanupAllExpiredDigitalRentals();
+
+    Media* media = findMediaById(movieId);
+    if (!media) {
+        throw MediaNotFoundException("Nie znaleziono filmu o ID: " + to_string(movieId));
+    }
+
+    Movie* movie = dynamic_cast<Movie*>(media);
+    if (!movie) {
+        throw InvalidDataException("Pozycja o ID " + to_string(movieId) + " (\"" + media->getTitle() + "\") nie jest filmem! Tylko filmy sa dostepne w dystrybucji online (VOD).");
+    }
+
+    User* user = findUserById(userId);
+    if (!user) {
+        throw UserNotFoundException("Nie znaleziono uzytkownika o ID: " + to_string(userId));
+    }
+
+    if (user->getAge() < movie->getAgeRating()) {
+        throw AgeRestrictionException("Ograniczenie wiekowe VOD: Uzytkownik " + user->getFullName() +
+                                      " (wiek: " + to_string(user->getAge()) +
+                                      ") nie moze wypozyczyc filmu \"" + movie->getTitle() +
+                                      "\" (wymagane: " + to_string(movie->getAgeRating()) + "+ lat)!");
+    }
+
+    if (user->hasActiveDigitalRental(movieId, getCurrentTime())) {
+        throw MediaUnavailableException("Uzytkownik " + user->getFullName() +
+                                       " posiada juz aktywna subskrypcje na film \"" + movie->getTitle() + "\"!");
+    }
+
+    DigitalRental rental(movieId, movie->getTitle(), movie->getDigitalPrice(), 48, getCurrentTime());
+    user->addDigitalRental(rental);
+    return movie->getDigitalPrice();
+}
+
+int LibraryManager::cleanupAllExpiredDigitalRentals() {
+    int totalCleaned = 0;
+    auto nowTime = getCurrentTime();
+    for (auto& u : users) {
+        totalCleaned += u.cleanupExpiredRentals(nowTime);
+    }
+    return totalCleaned;
+}
+
+void LibraryManager::displayUserDigitalRentals(int userId) const {
+    const User* user = findUserById(userId);
+    if (!user) {
+        throw UserNotFoundException("Nie znaleziono uzytkownika o ID: " + to_string(userId));
+    }
+    cout << "\n--- SUBSKRYPCJE CYFROWE UZYTKOWNIKA: " << user->getFullName() << " (ID: " << userId << ") ---\n";
+    user->displayDigitalRentals(cout, getCurrentTime());
+}
+
+void LibraryManager::advanceSimulatedTime(int hours) {
+    if (hours <= 0) {
+        throw InvalidDataException("Liczba godzin symulacji musi byc wieksza od zera (podano: " + to_string(hours) + ").");
+    }
+    simulatedHoursOffset += hours;
+    int expired = cleanupAllExpiredDigitalRentals();
+    cout << "[SYMULACJA CZASU] Przesunieto czas o +" << hours << "h (lacznie: +" << simulatedHoursOffset << "h).\n";
+    if (expired > 0) {
+        cout << "[AUTOMATYCZNY ZWROT] Automatycznie usunieto " << expired << " wygaslych subskrypcji online po uplywie 48h!\n";
+    } else {
+        cout << "[AUTOMATYCZNY ZWROT] Brak subskrypcji, ktore wygasly w tym przedziale czasu.\n";
+    }
+}
+
+int LibraryManager::getSimulatedHoursOffset() const {
+    return simulatedHoursOffset;
+}
+
+chrono::system_clock::time_point LibraryManager::getCurrentTime() const {
+    return chrono::system_clock::now() + chrono::hours(simulatedHoursOffset);
+}
+
 void LibraryManager::seedData() {
     addBook("Wiedzmin: Ostatnie zyczenie", 1993, "Andrzej Sapkowski", 288, "978-8375780635");
     addBook("Solaris", 1961, "Stanislaw Lem", 216, "978-8308049006");
     addBook("Czysty Kod", 2008, "Robert C. Martin", 464, "978-8328302341");
 
-    addMovie("Incepcja", 2010, "Christopher Nolan", 148, 12);
-    addMovie("Ojciec Chrzestny", 1972, "Francis Ford Coppola", 175, 16);
-    addMovie("Pulp Fiction", 1994, "Quentin Tarantino", 154, 18);
+    addMovie("Incepcja", 2010, "Christopher Nolan", 148, 12, 14.99);
+    addMovie("Ojciec Chrzestny", 1972, "Francis Ford Coppola", 175, 16, 12.99);
+    addMovie("Pulp Fiction", 1994, "Quentin Tarantino", 154, 18, 17.99);
 
     addUser("Jan Kowalski", 25);
     addUser("Anna Nowak", 15);

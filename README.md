@@ -1,6 +1,6 @@
 # System Zarządzania Wypożyczalnią Mediów (Biblioteka C++)
 
-Projekt akademicki realizujący pełną funkcjonalność systemu zarządzania biblioteką multimediów (książki, filmy) wraz z obsługą czytelników, operacjami CRUD, polimorfizmem dynamicznym, kontrolą ograniczeń wiekowych, przeciążaniem operatorów oraz własną hierarchią wyjątków.
+Projekt akademicki realizujący pełną funkcjonalność systemu zarządzania biblioteką multimediów (książki, filmy tradycyjne oraz **dystrybucja cyfrowa filmów online VOD na 48h**) wraz z obsługą czytelników, operacjami CRUD, polimorfizmem dynamicznym, kontrolą ograniczeń wiekowych, przeciążaniem operatorów oraz własną hierarchią wyjątków.
 
 Projekt został zaprojektowany i zaimplementowany zgodnie z najwyższymi standardami programowania obiektowego w języku C++ (standard C++17), spełniając wszystkie wymagania na **ocenę 5.0**.
 
@@ -16,15 +16,17 @@ media_library_system/
 │   ├── Exceptions.hpp        # Hierarchia własnych wyjątków (dziedziczenie po std::runtime_error)
 │   ├── Media.hpp             # Klasa bazowa reprezentująca ogólny nośnik informacji
 │   ├── Book.hpp              # Klasa pochodna reprezentująca książkę
-│   ├── Movie.hpp             # Klasa pochodna reprezentująca film
-│   ├── User.hpp              # Klasa reprezentująca czytelnika/użytkownika
-│   └── LibraryManager.hpp    # Główny kontroler zarządzający katalogiem mediów i czytelnikami
+│   ├── Movie.hpp             # Klasa pochodna reprezentująca film (wraz z opłatą VOD)
+│   ├── DigitalRental.hpp     # Klasa reprezentująca 48-godzinną subskrypcję cyfrową filmu
+│   ├── User.hpp              # Klasa czytelnika z kontenerem subskrypcji online
+│   └── LibraryManager.hpp    # Główny kontroler zarządzający katalogiem, czytelnikami i VOD
 ├── src/
 │   ├── Media.cpp             # Implementacja metod klasy Media i operatorów
 │   ├── Book.cpp              # Implementacja metod klasy Book
-│   ├── Movie.cpp             # Implementacja metod klasy Movie
-│   ├── User.cpp              # Implementacja metod klasy User i operatora<<
-│   ├── LibraryManager.cpp    # Logika biznesowa, kompozycja, dynamic_cast, obsługa błędów
+│   ├── Movie.cpp             # Implementacja metod klasy Movie i opłaty cyfrowej
+│   ├── DigitalRental.cpp     # Logika czasu wygaśnięcia, obliczania pozostałych godzin
+│   ├── User.cpp              # Zarządzanie subskrypcjami użytkownika, auto-usuwanie
+│   ├── LibraryManager.cpp    # Logika biznesowa, kompozycja, dynamic_cast, symulacja czasu
 │   └── main.cpp              # Interfejs konsolowy (menu tekstowe, obsługa wejścia, try-catch)
 ├── docs/
 │   ├── UML.puml              # Diagram klas w formacie PlantUML
@@ -48,11 +50,12 @@ media_library_system/
 | **Wirtualny destruktor** | `virtual ~Media() = default;` w klasie bazowej zapewnia bezpieczne usuwanie obiektów polimorficznych. | `Media.hpp` |
 | **Polimorfizm dynamiczny** | Metody `printDetails()`, `calculateLateFee()`, `getType()` zadeklarowane jako wirtualne i nadpisane z `override`. | `Book.cpp`, `Movie.cpp` |
 | **Zarządzanie pamięcią i sprytne wskaźniki** | Użycie `std::vector<std::unique_ptr<Media>>` oraz `std::make_unique` zapobiega wszelkim wyciekom pamięci bez konieczności ręcznego `delete`. | `LibraryManager.hpp`, `LibraryManager.cpp` |
-| **Rzutowanie dynamiczne (`dynamic_cast`)** | W metodzie `borrowMedia()` następuje bezpieczne rzutowanie `dynamic_cast<const Movie*>(media)` w celu sprawdzenia ograniczenia wiekowego (`ageRating` vs `user.getAge()`). | `src/LibraryManager.cpp` (metoda `borrowMedia`) |
+| **Rzutowanie dynamiczne (`dynamic_cast`)** | W metodach `borrowMedia()` oraz `rentMovieOnline()` następuje bezpieczne rzutowanie `dynamic_cast<const Movie*>` w celu sprawdzenia ograniczenia wiekowego oraz typu nośnika. | `src/LibraryManager.cpp` |
+| **Dystrybucja cyfrowa filmów (VOD 48h)** | Każdy film posiada stawkę za dystrybucję cyfrową (`digitalPrice`). Użytkownik może wypożyczyć film online na 48 godzin. Po tym czasie subskrypcja wygasa i jest automatycznie usuwana z konta użytkownika. | `DigitalRental.hpp`, `User.hpp`, `LibraryManager.cpp` |
 | **Przeciążanie operatorów** | `operator==` porównujący media po `id`; polimorficzny `operator<<` współpracujący z `std::ostream`. | `Media.hpp`, `Media.cpp`, `User.hpp`, `User.cpp` |
 | **Własna hierarchia wyjątków** | Klasy `LibraryException`, `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException`, `InvalidDataException` dziedziczące po `std::runtime_error`. | `include/Exceptions.hpp` |
-| **Odporny interfejs użytkownika i walidacja** | Pętla menu w `main.cpp` z rygorystyczną walidacją wejścia (`cin.fail()`, sprawdzanie wartości dodatnich, usuwanie białych znaków, blok `try ... catch`). Uniemożliwia wprowadzenie ujemnej liczby stron, ujemnego wieku, pustych napisów itp. | `src/main.cpp`, `src/LibraryManager.cpp` |
-| **Historia prac w Git** | 8 logicznych, atomowych commitów dokumentujących kolejne fazy powstawania aplikacji. | `git log --oneline` |
+| **Odporny interfejs użytkownika i walidacja** | Pętla menu w `main.cpp` z rygorystyczną walidacją wejścia (`readInt`, `readDouble`, `readLine` z `trim()` i `removeBom()`). | `src/main.cpp` |
+| **Historia prac w Git** | Logiczne commity podpisane autorem dokumentujące fazy powstawania aplikacji. | `git log --oneline` |
 
 ---
 
@@ -60,76 +63,30 @@ media_library_system/
 
 ### Opcja 1: Bezpośrednio za pomocą kompilatora g++ (zalecane)
 ```powershell
-g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude src/Media.cpp src/User.cpp src/Book.cpp src/Movie.cpp src/LibraryManager.cpp src/main.cpp -o bin/library_app.exe
+g++ -std=c++17 -Wall -Wextra -pedantic -Iinclude src/Media.cpp src/User.cpp src/Book.cpp src/Movie.cpp src/LibraryManager.cpp src/DigitalRental.cpp src/main.cpp -o bin/library_app.exe
 ```
 Uruchomienie:
 ```powershell
 .\bin\library_app.exe
 ```
 
-### Opcja 2: Za pomocą Makefile (jeśli zainstalowany jest program `make`)
+### Opcja 2: Za pomocą Makefile
 ```powershell
 make
 .\bin\library_app.exe
 ```
 
-### Opcja 3: Za pomocą CMake
-```powershell
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
 ---
 
-## 4. Przebieg Prezentacji / Scenariusz Obrony Projektu
+## 4. Scenariusz Demonstracyjny dla Prowadzącego (VOD 48h)
 
-Program przy starcie uruchamia metodę `seedData()`, która wprowadza przykładowe dane:
-- **Książki**:
-  - ID 1: *Wiedźmin: Ostatnie życzenie* (Andrzej Sapkowski)
-  - ID 2: *Solaris* (Stanisław Lem)
-  - ID 3: *Czysty Kod* (Robert C. Martin)
-- **Filmy**:
-  - ID 4: *Incepcja* (od lat 12)
-  - ID 5: *Ojciec Chrzestny* (od lat 16)
-  - ID 6: *Pulp Fiction* (od lat 18)
-- **Czytelnicy**:
-  - ID 1: *Jan Kowalski* (25 lat)
-  - ID 2: *Anna Nowak* (15 lat)
-  - ID 3: *Piotr Wiśniewski* (10 lat)
-
-### Rekomendowane kroki demonstracyjne dla prowadzącego:
-1. **Opcja 1 (Wypisanie katalogu)**: Demonstracja polimorficznego działania `operator<<` i metody `printDetails()` (książki wyświetlają autora i ISBN, filmy reżysera i ograniczenie wiekowe).
-2. **Opcja 7 (Próba wypożyczenia filmu 18+ przez 15-latka)**:
-   - Wybierz pozycję ID 6 (*Pulp Fiction*, od 18 lat) i użytkownika ID 2 (*Anna Nowak*, 15 lat).
-   - **Efekt**: Rzucenie i obsłużenie wyjątku `AgeRestrictionException` dzięki `dynamic_cast`.
-3. **Opcja 7 (Prawidłowe wypożyczenie)**:
-   - Wypożycz pozycję ID 6 użytkownikowi ID 1 (*Jan Kowalski*, 25 lat).
-   - **Efekt**: Sukces. Status pozycji zmienia się na wypożyczony.
-4. **Opcja 7 (Próba ponownego wypożyczenia)**:
-   - Ponowna próba wypożyczenia pozycji ID 6.
-   - **Efekt**: Złapanie wyjątku `MediaUnavailableException`.
-5. **Opcja 8 (Zwrot pozycji z karą)**:
-   - Zwróć pozycję ID 6 ze spóźnieniem np. 5 dni.
-   - **Efekt**: Wyliczenie kary przez polimorficzną metodę `calculateLateFee()` (stawka 2.00 zł/dzień = 10.00 PLN).
-6. **Opcja 9 (Porównanie operator==)**:
-   - Wprowadź ID 1 i ID 2 (wynik: FALSE).
-   - Wprowadź ID 1 i ID 1 (wynik: TRUE).
-7. **Opcja 5 (Usunięcie pozycji i próba operacji)**:
-   - Usuń pozycję ID 2, a następnie spróbuj ją wypożyczyć.
-   - **Efekt**: Wyjątek `MediaNotFoundException`.
-
----
-
-## 5. Historia Commitów Git
-
-Projekt zawiera historię 8 kroków:
-1. `inicjalizacja struktury projektu (include, src, docs)`
-2. `implementacja klasy bazowej Media oraz klasy User`
-3. `dodanie klas pochodnych Book i Movie z metodami wirtualnymi`
-4. `implementacja LibraryManager z operacjami CRUD`
-5. `przeciazenie operatorow << oraz == dla klasy Media`
-6. `dodanie wlasnych wyjatkow i walidacji wieku przy wypozyczaniu`
-7. `budowa interfejsu konsolowego w main.cpp i danych testowych`
-8. `docs: dodanie schematu UML oraz instrukcji kompilacji w README.md`
+1. **Wypożyczenie filmu online (Opcja 9)**:
+   - Wybierz film ID 6 (*Pulp Fiction*, wiek 18+, cena 17.99 PLN).
+   - Próba wypożyczenia przez użytkownika ID 2 (*Anna Nowak*, 15 lat) -> Wyjątek `AgeRestrictionException`.
+   - Wypożyczenie przez użytkownika ID 1 (*Jan Kowalski*, 25 lat) -> Pomyślne pobranie opłaty 17.99 PLN i utworzenie subskrypcji na 48h.
+2. **Podgląd aktywnych subskrypcji (Opcja 10)**:
+   - Wyświetl subskrypcje użytkownika ID 1: widoczny film, opłata oraz dokładny czas wygaśnięcia i licznik pozostałych godzin (48h).
+3. **Symulacja automatycznego zwrotu (Opcja 11)**:
+   - Przesuń czas symulacji o 49 godzin.
+   - Program automatycznie wykrywa wygaśnięcie subskrypcji, dokonuje automatycznego zwrotu i usuwa film z konta użytkownika.
+   - Ponowne sprawdzenie opcją 10 potwierdza, że subskrypcja została pomyślnie i automatycznie usunięta!

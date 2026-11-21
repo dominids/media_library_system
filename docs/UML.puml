@@ -49,22 +49,44 @@ class Movie {
     - director : string
     - durationMinutes : int
     - ageRating : int
-    + Movie(id: int, title: string, releaseYear: int, director: string, durationMinutes: int, ageRating: int)
+    - digitalPrice : double
+    + Movie(id: int, title: string, releaseYear: int, director: string, durationMinutes: int, ageRating: int, digitalPrice: double)
     + getDirector() : string
     + getDurationMinutes() : int
     + getAgeRating() : int
+    + getDigitalPrice() : double
     + setDirector(newDirector: string) : void
     + setDurationMinutes(duration: int) : void
     + setAgeRating(rating: int) : void
+    + setDigitalPrice(price: double) : void
     + printDetails(os: ostream&) : void <<override>>
     + calculateLateFee(daysOverdue: int) : double <<override>>
     + getType() : string <<override>>
+}
+
+class DigitalRental {
+    - movieId : int
+    - movieTitle : string
+    - rentalTime : time_point
+    - expirationTime : time_point
+    - feePaid : double
+    + DigitalRental()
+    + DigitalRental(movieId: int, title: string, fee: double, durationHours: int, startTime: time_point)
+    + getMovieId() : int
+    + getMovieTitle() : string
+    + getRentalTime() : time_point
+    + getExpirationTime() : time_point
+    + getFeePaid() : double
+    + isExpired(currentTime: time_point) : bool
+    + getRemainingHours(currentTime: time_point) : int
+    + getFormattedExpiration() : string
 }
 
 class User {
     - userId : int
     - fullName : string
     - age : int
+    - digitalRentals : vector<DigitalRental>
     + User()
     + User(userId: int, fullName: string, age: int)
     + getUserId() : int
@@ -72,6 +94,11 @@ class User {
     + getAge() : int
     + setFullName(name: string) : void
     + setAge(newAge: int) : void
+    + addDigitalRental(rental: const DigitalRental&) : void
+    + getDigitalRentals() : const vector<DigitalRental>&
+    + hasActiveDigitalRental(movieId: int, currentTime: time_point) : bool
+    + cleanupExpiredRentals(currentTime: time_point) : int
+    + displayDigitalRentals(os: ostream&, currentTime: time_point) : void
     + friend operator<<(os: ostream&, user: const User&) : ostream&
 }
 
@@ -104,9 +131,10 @@ class LibraryManager {
     - users : vector<User>
     - nextMediaId : int
     - nextUserId : int
+    - simulatedHoursOffset : int
     + LibraryManager()
     + addBook(title: string, year: int, author: string, pages: int, isbn: string) : int
-    + addMovie(title: string, year: int, director: string, duration: int, ageRating: int) : int
+    + addMovie(title: string, year: int, director: string, duration: int, ageRating: int, digitalPrice: double) : int
     + addUser(fullName: string, age: int) : int
     + removeMedia(id: int) : void
     + findMediaById(id: int) : Media*
@@ -118,6 +146,12 @@ class LibraryManager {
     + displayAllUsers() : void const
     + borrowMedia(mediaId: int, userId: int) : void
     + returnMedia(mediaId: int, daysOverdue: int) : double
+    + rentMovieOnline(movieId: int, userId: int) : double
+    + cleanupAllExpiredDigitalRentals() : int
+    + displayUserDigitalRentals(userId: int) : void const
+    + advanceSimulatedTime(hours: int) : void
+    + getSimulatedHoursOffset() : int const
+    + getCurrentTime() : time_point const
     + seedData() : void
     + getCatalog() : const vector<unique_ptr<Media>>& const
     + getUsers() : const vector<User>& const
@@ -138,9 +172,11 @@ LibraryException <|-- InvalidDataException
 ' Kompozycja i agregacja
 LibraryManager *-- "0..*" Media : zarzadza cyklem zycia (unique_ptr)
 LibraryManager o-- "0..*" User : agreguje uzytkownikow
+User *-- "0..*" DigitalRental : posiada subskrypcje cyfrowe 48h
 
 ' Zaleznosci
 LibraryManager ..> LibraryException : rzuca wyjatki
-LibraryManager ..> Movie : dynamic_cast (walidacja wieku)
+LibraryManager ..> Movie : dynamic_cast (walidacja wieku i VOD)
+LibraryManager ..> DigitalRental : tworzy subskrypcje VOD
 
 @enduml

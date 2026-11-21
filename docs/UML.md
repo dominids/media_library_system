@@ -1,6 +1,6 @@
 # Diagram Klas UML i Relacje w Projekcie
 
-Poniższy diagram przedstawia architekturę obiektową Systemu Zarządzania Wypożyczalnią Mediów.
+Poniższy diagram przedstawia architekturę obiektową Systemu Zarządzania Wypożyczalnią Mediów wzbogaconą o moduł **dystrybucji cyfrowej filmów online (VOD 48h)**.
 
 ```mermaid
 classDiagram
@@ -52,22 +52,44 @@ classDiagram
         -string director
         -int durationMinutes
         -int ageRating
-        +Movie(int id, string title, int year, string director, int durationMinutes, int ageRating)
+        -double digitalPrice
+        +Movie(int id, string title, int year, string director, int durationMinutes, int ageRating, double digitalPrice)
         +string getDirector() const
         +int getDurationMinutes() const
         +int getAgeRating() const
+        +double getDigitalPrice() const
         +void setDirector(string newDirector)
         +void setDurationMinutes(int duration)
         +void setAgeRating(int rating)
+        +void setDigitalPrice(double price)
         +void printDetails(ostream& os) const override
         +double calculateLateFee(int daysOverdue) const override
         +string getType() const override
+    }
+
+    class DigitalRental {
+        -int movieId
+        -string movieTitle
+        -time_point rentalTime
+        -time_point expirationTime
+        -double feePaid
+        +DigitalRental()
+        +DigitalRental(int movieId, string title, double fee, int durationHours, time_point startTime)
+        +int getMovieId() const
+        +string getMovieTitle() const
+        +time_point getRentalTime() const
+        +time_point getExpirationTime() const
+        +double getFeePaid() const
+        +bool isExpired(time_point currentTime) const
+        +int getRemainingHours(time_point currentTime) const
+        +string getFormattedExpiration() const
     }
 
     class User {
         -int userId
         -string fullName
         -int age
+        -vector~DigitalRental~ digitalRentals
         +User()
         +User(int userId, string fullName, int age)
         +int getUserId() const
@@ -75,6 +97,11 @@ classDiagram
         +int getAge() const
         +void setFullName(string name)
         +void setAge(int newAge)
+        +void addDigitalRental(DigitalRental rental)
+        +const vector~DigitalRental~& getDigitalRentals() const
+        +bool hasActiveDigitalRental(int movieId, time_point currentTime) const
+        +int cleanupExpiredRentals(time_point currentTime)
+        +void displayDigitalRentals(ostream& os, time_point currentTime) const
         +friend ostream& operator<<(ostream& os, const User& user)
     }
 
@@ -102,9 +129,10 @@ classDiagram
         -vector~User~ users
         -int nextMediaId
         -int nextUserId
+        -int simulatedHoursOffset
         +LibraryManager()
         +int addBook(string title, int year, string author, int pageCount, string isbn)
-        +int addMovie(string title, int year, string director, int durationMinutes, int ageRating)
+        +int addMovie(string title, int year, string director, int durationMinutes, int ageRating, double digitalPrice)
         +int addUser(string fullName, int age)
         +void removeMedia(int id)
         +Media* findMediaById(int id)
@@ -116,7 +144,13 @@ classDiagram
         +void displayAllUsers() const
         +void borrowMedia(int mediaId, int userId)
         +double returnMedia(int mediaId, int daysOverdue)
-        +void seedData()
+        +double rentMovieOnline(int movieId, int userId)
+        +int cleanupAllExpiredDigitalRentals()
+        +void displayUserDigitalRentals(int userId) const
+        +void advanceSimulatedTime(int hours)
+        +int getSimulatedHoursOffset() const
+        +time_point getCurrentTime() const
+        +seedData() void
         +const vector~unique_ptr~Media~~& getCatalog() const
         +const vector~User~& getUsers() const
     }
@@ -131,8 +165,10 @@ classDiagram
 
     LibraryManager *-- Media : kompozycja (std::unique_ptr)
     LibraryManager o-- User : agregacja / kolekcja uzytkownikow
+    User *-- DigitalRental : kompozycja subskrypcji cyfrowych
     LibraryManager ..> LibraryException : rzuca wyjatki
-    LibraryManager ..> Movie : dynamic_cast (walidacja ograniczenia wiekowego)
+    LibraryManager ..> Movie : dynamic_cast (walidacja wieku i VOD)
+    LibraryManager ..> DigitalRental : tworzy subskrypcje
 ```
 
 ---
@@ -141,10 +177,13 @@ classDiagram
 
 1. **Dziedziczenie (Generalizacja)**:
    - Klasy `Book` oraz `Movie` dziedziczą publicznie po klasie abstrakcyjnej `Media`.
-   - Klasy wyjątków `MediaNotFoundException`, `MediaUnavailableException`, `AgeRestrictionException`, `UserNotFoundException`, `InvalidDataException` dziedziczą po `LibraryException` (która dziedziczy po `std::runtime_error`).
+   - Klasy wyjątków dziedziczą po `LibraryException` (`std::runtime_error`).
 2. **Kompozycja**:
-   - `LibraryManager` posiada kolekcję `catalog` typu `std::vector<std::unique_ptr<Media>>`. Obiekty mediów są tworzone przez menedżera za pomocą `std::make_unique` i ich cykl życia jest ściśle związany z instancją menedżera. Usunięcie menedżera lub elementu z wektora automatycznie i bezpiecznie zwalnia pamięć (brak wycieków).
+   - `LibraryManager` zarządza cyklem życia zasobów w `catalog` typu `std::vector<std::unique_ptr<Media>>`.
+   - `User` posiada kolekcję `digitalRentals` typu `std::vector<DigitalRental>`. Subskrypcja online (48h) jest trwale powiązana z użytkownikiem i automatycznie usuwana po wygaśnięciu.
 3. **Agregacja**:
-   - `LibraryManager` przechowuje listę zarejestrowanych czytelników w kontenerze `std::vector<User>`.
-4. **Zależność (Dependency) i Rzutowanie Dynamiczne (`dynamic_cast`)**:
-   - `LibraryManager` w metodzie `borrowMedia` weryfikuje czy wypożyczany obiekt jest typu `Movie`. Jeśli tak, rzutuje wskaźnik polimorficzny `Media*` na `const Movie*` i porównuje wiek użytkownika z `ageRating`. W razie naruszenia reguły rzuca `AgeRestrictionException`.
+   - `LibraryManager` gromadzi obiekty `User`.
+4. **Dystrybucja cyfrowa filmów (VOD 48h)**:
+   - Każdy obiekt `Movie` posiada atrybut `digitalPrice` (stawka za 48-godzinny dostęp cyfrowy).
+   - Metoda `rentMovieOnline()` weryfikuje wiek użytkownika (`dynamic_cast<Movie*>`), pobiera opłatę i rejestruje subskrypcję.
+   - Po upływie 48 godzin subskrypcja wygasa i jest automatycznie usuwana z konta czytelnika (`cleanupExpiredRentals()`).
