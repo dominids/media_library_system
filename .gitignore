@@ -1,0 +1,10 @@
+# Pliki binarne i kompilacji
+bin/
+*.exe
+*.o
+*.obj
+
+# Środowiska IDE
+.vscode/
+.idea/
+*.swp
