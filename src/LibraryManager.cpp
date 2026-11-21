@@ -1,7 +1,14 @@
 #include "LibraryManager.hpp"
 #include <iostream>
 #include <algorithm>
+#include <cctype>
+#include <string>
 
+std::string toLower(std::string s) { // passed by value to make a copy
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return s;
+}
 using namespace std;
 
 LibraryManager::LibraryManager()
@@ -76,13 +83,13 @@ int LibraryManager::addUserWithLogin(const string& fullName, int age, const stri
     }
 
     int id = nextUserId++;
-    users.push_back(User(id, fullName, age, username, rawPassword));
+    users.push_back(User(id, fullName, age, toLower(username), rawPassword));
     return id;
 }
 
 User* LibraryManager::findUserByLogin(const string& username) {
     for (auto& u : users) {
-        if (u.getUsername() == username) {
+        if (u.getUsername() == toLower(username)) {
             return &u;
         }
     }
@@ -91,7 +98,7 @@ User* LibraryManager::findUserByLogin(const string& username) {
 
 bool LibraryManager::loginExists(const string& username) const {
     for (const auto& u : users) {
-        if (u.getUsername() == username) {
+        if (u.getUsername() == toLower(username)) {
             return true;
         }
     }

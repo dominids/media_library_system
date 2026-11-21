@@ -189,10 +189,9 @@ void printMenu() {
     cout << " 6. Zarzadzaj uzytkownikami (Rejestracja / Lista)\n";
     cout << " 7. Wypozycz fizycznie pozycje uzytkownikowi\n";
     cout << " 8. Zwroc fizyczna pozycje (kalkulacja kary)\n";
-    cout << " 9. Wypozycz film ONLINE (dystrybucja cyfrowa na 48h)\n";
-    cout << " 10. Wyswietl aktywne subskrypcje online uzytkownika\n";
-    cout << " 11. Symuluj uplyw czasu (+godziny) i automatyczny zwrot VOD\n";
-    cout << " 12. Wyjscie z programu\n";
+    cout << " 9. Wyswietl aktywne subskrypcje online uzytkownika\n";
+    cout << " 10. Symuluj uplyw czasu (+godziny) i automatyczny zwrot VOD\n";
+    cout << " 11. Wyjscie z programu\n";
     cout << "========================================\n";
 }
 
@@ -314,19 +313,6 @@ int main() {
                     break;
                 }
                 case 9: {
-                    cout << "\n--- WYPOZYCZENIE FILMU ONLINE (CYFROWE VOD NA 48H) ---\n";
-                    int movieId = promptMediaId(library, "Podaj ID filmu do wypozyczenia online: ");
-                    int userId = promptUserId(library);
-
-                    double price = library.rentMovieOnline(movieId, userId);
-                    syncSave(library);
-                    cout << fixed << setprecision(2);
-                    cout << "[SUKCES] Film ID " << movieId << " zostal wypozyczony online dla uzytkownika ID " << userId << "!\n";
-                    cout << "[VOD] Pobrano oplate dystrybucyjna: " << price << " PLN.\n";
-                    cout << "[VOD] Subskrypcja jest aktywna przez 48 godzin. Po tym czasie wygasnie i zostanie zwrocona automatycznie.\n";
-                    break;
-                }
-                case 10: {
                     cout << "\n--- PRZEGLADANIE SUBSKRYPCJI ONLINE UZYTKOWNIKA ---\n";
                     int userId = promptUserId(library);
                     library.cleanupAllExpiredDigitalRentals();
@@ -334,7 +320,7 @@ int main() {
                     library.displayUserDigitalRentals(userId);
                     break;
                 }
-                case 11: {
+                case 10: {
                     cout << "\n--- SYMULACJA UPLYWU CZASU (TEST AUTOMATYCZNEGO ZWROTU) ---\n";
                     cout << "Aktualne przesuniecie czasu: +" << library.getSimulatedHoursOffset() << "h\n";
                     int hours = readInt("O ile godzin chcesz przesunac zegar symulacji? (np. 48 lub 49): ", 1);
@@ -342,7 +328,7 @@ int main() {
                     syncSave(library);
                     break;
                 }
-                case 12: {
+                case 11: {
                     cout << "\nZamykanie programu. Dziekujemy za skorzystanie z systemu!\n";
                     running = false;
                     break;
